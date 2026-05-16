@@ -1560,7 +1560,7 @@ footer{
 <!-- ── FOOTER ─────────────────────────────── -->
 <footer>
   <div class="footer-brand">NR.</div>
-  <div class="footer-copy">© 2025 Nithin Rajan — Engineered with precision.</div>
+  <div class="footer-copy">© 2026 Nithin Rajan — Engineered with precision.</div>
   <div class="footer-links">
     <a href="https://linkedin.com/in/nithin-rajan-574072101/" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
     <a href="mailto:Nitz.719@gmail.com">Email</a>
@@ -2081,7 +2081,7 @@ function sendMsg(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showStat('Please enter a valid email address.','warn');return;}
   btn.disabled=true; btn.querySelector('span').textContent='Sending...';
   stat.style.display='none';
-  if(typeof emailjs==='undefined'||EJ_PK==='YOUR_PUBLIC_KEY'){
+  if(typeof emailjs==='undefined'||EJ_PK==='service_6r5wwdo'){
     setTimeout(()=>{
       showStat('Message sent. Nithin will be in touch shortly.','ok');
       ['fn','fe','fs','fm'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
