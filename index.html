@@ -648,15 +648,42 @@ nav.scrolled{
 }
 @media(max-width:768px){
   .swipe-hint{display:block}
-  .proj-slide{grid-template-columns:1fr;height:auto}
-  .proj-stage{height:auto}
-  .proj-img-side{height:200px}
-  .proj-info-side{padding:28px 20px}
-  .proj-img-overlay{background:linear-gradient(to bottom,transparent 40%,var(--bg) 100%)}
-  .proj-header{flex-direction:column;gap:16px;align-items:flex-start}
-  .proj-stage{border-radius:2px}
+  .proj-slide{
+    grid-template-columns:1fr;
+    height:auto;
+  }
+  .proj-stage{
+    height:auto;
+  }
+  .proj-img-side{
+    height:260px;
+    min-height:260px;
+    width:100%;
+    position:relative;
+  }
+  .proj-img-side img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .proj-info-side{
+    padding:28px 20px;
+    border-left:none;
+    border-top:1px solid var(--bd);
+  }
+  .proj-img-overlay{
+    background:linear-gradient(to bottom,transparent 40%,var(--bg) 100%);
+  }
+  .proj-header{
+    flex-direction:column;
+    gap:16px;
+    align-items:flex-start;
+  }
+  .proj-stage{
+    border-radius:2px;
+  }
 }
-
 /* ═══════════════════════════════════════════
    TIMELINE
 ═══════════════════════════════════════════ */
