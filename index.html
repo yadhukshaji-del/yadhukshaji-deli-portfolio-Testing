@@ -2067,7 +2067,7 @@ function closeModal(){
 })();
 
 /* ── CONTACT FORM ── */
-const EJ_PK='YOUR_PUBLIC_KEY', EJ_SID='YOUR_SERVICE_ID', EJ_TID='YOUR_TEMPLATE_ID';
+const EJ_PK='Rr5AJRYxWpw8Jt9pt', EJ_SID='service_6r5wwdo', EJ_TID='template_28ktkhd';
 if(typeof emailjs !== 'undefined') {
   try { emailjs.init({publicKey:EJ_PK}); } catch(e){}
 }
@@ -2081,7 +2081,7 @@ function sendMsg(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showStat('Please enter a valid email address.','warn');return;}
   btn.disabled=true; btn.querySelector('span').textContent='Sending...';
   stat.style.display='none';
-  if(typeof emailjs==='undefined'||EJ_PK==='service_6r5wwdo'){
+  if(typeof emailjs==='undefined'||EJ_PK==='Rr5AJRYxWpw8Jt9pt'){
     setTimeout(()=>{
       showStat('Message sent. Nithin will be in touch shortly.','ok');
       ['fn','fe','fs','fm'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
