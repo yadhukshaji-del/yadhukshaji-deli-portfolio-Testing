@@ -2,1031 +2,903 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Nithin Rajan — Robotics Engineer</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@300;400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#02020A;
-  --cy:#00F5FF;
-  --or:#FF4500;
-  --gr:#00FF8C;
-  --yw:#FFD60A;
-  --pu:#BF5AF2;
-  --text:#F0F4FF;
-  --muted:rgba(240,244,255,0.45);
-  --bd:rgba(0,245,255,0.12);
+  --cy:#00D4FF;--or:#FF5500;--gr:#00FF8C;--yw:#FFD60A;--pu:#BF5AF2;
+  --text:#F0F4FF;--muted:rgba(240,244,255,0.5);
 }
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;overflow:hidden;height:100vh;width:100vw;cursor:none}
-canvas{position:fixed;inset:0;z-index:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Syne',sans-serif;color:var(--text);cursor:none}
+canvas#bg{position:fixed;inset:0;z-index:0;display:block}
 
 /* CURSOR */
-#cur{position:fixed;z-index:9999;pointer-events:none;width:12px;height:12px;margin:-6px 0 0 -6px;mix-blend-mode:screen;transition:transform .15s}
-#cur::before{content:'';position:absolute;inset:0;border-radius:50%;background:var(--cy);opacity:.9}
-#cur-ring{position:fixed;z-index:9998;pointer-events:none;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;border:1px solid rgba(0,245,255,0.4);transition:width .25s,height .25s,margin .25s,border-color .25s}
-body:has(a:hover) #cur-ring,body:has(button:hover) #cur-ring{width:52px;height:52px;margin:-26px 0 0 -26px;border-color:var(--or)}
+#cur{position:fixed;pointer-events:none;z-index:9999;width:10px;height:10px;border-radius:50%;background:var(--cy);box-shadow:0 0 12px var(--cy),0 0 4px var(--cy);transform:translate(-50%,-50%);transition:transform .1s}
+#cur2{position:fixed;pointer-events:none;z-index:9998;width:40px;height:40px;border-radius:50%;border:1px solid rgba(0,212,255,.35);transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s}
+body:has(button:hover,a:hover) #cur2{width:60px;height:60px;border-color:var(--or)}
 
-/* PROGRESS */
-#progress-wrap{position:fixed;top:0;left:0;right:0;z-index:500;height:2px;background:rgba(255,255,255,0.05)}
-#progress-bar{height:100%;background:linear-gradient(90deg,var(--cy),var(--or),var(--gr));width:0%;transition:width .2s linear}
+/* CINEMATIC OVERLAY */
+#vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 85% 85% at 50% 50%,transparent 50%,rgba(0,0,0,.85) 100%)}
+#grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")}
+#scanlines{position:fixed;inset:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px)}
+#lens-flare{position:fixed;z-index:3;pointer-events:none;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(0,212,255,.08) 0%,rgba(0,212,255,.03) 30%,transparent 70%);transform:translate(-50%,-50%);transition:opacity .5s;opacity:0}
 
-/* HUD OVERLAYS */
-#hud{position:fixed;inset:0;z-index:100;pointer-events:none}
-#hud-corners .c{position:absolute;width:20px;height:20px;border-color:rgba(0,245,255,0.35);border-style:solid}
-#hud-corners .c.tl{top:20px;left:20px;border-width:1px 0 0 1px}
-#hud-corners .c.tr{top:20px;right:20px;border-width:1px 1px 0 0}
-#hud-corners .c.bl{bottom:20px;left:20px;border-width:0 0 1px 1px}
-#hud-corners .c.br{bottom:20px;right:20px;border-width:0 1px 1px 0}
-#scanline{position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,245,255,0.3),transparent);animation:scan 6s linear infinite;pointer-events:none;z-index:50}
-@keyframes scan{0%{top:-2px;opacity:.6}100%{top:100vh;opacity:0}}
-#coords{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:rgba(0,245,255,0.4);z-index:200;pointer-events:none}
-
-/* SECTION PANELS */
-.panel{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .6s;padding:40px}
-.panel.visible{opacity:1;pointer-events:auto}
-.panel-inner{position:relative;max-width:900px;width:100%}
+/* TOP HUD */
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none}
+#hud .c{position:absolute;width:24px;height:24px;border-color:rgba(0,212,255,.3);border-style:solid}
+#hud .tl{top:18px;left:18px;border-width:1px 0 0 1px}
+#hud .tr{top:18px;right:18px;border-width:1px 1px 0 0}
+#hud .bl{bottom:18px;left:18px;border-width:0 0 1px 1px}
+#hud .br{bottom:18px;right:18px;border-width:0 1px 1px 0}
+#hud-data{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:15;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:rgba(0,212,255,.4);text-transform:uppercase;display:flex;gap:32px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);padding:7px 20px;border:1px solid rgba(0,212,255,.1);border-radius:40px}
 
 /* NAV */
-#nav{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:300;display:flex;gap:6px;background:rgba(2,2,10,0.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--bd);border-radius:40px;padding:8px 12px}
-.nav-btn{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);background:none;border:none;cursor:pointer;padding:8px 16px;border-radius:20px;transition:all .3s}
-.nav-btn:hover,.nav-btn.active{color:var(--bg);background:var(--cy)}
+#nav{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:4px;background:rgba(0,0,0,.55);backdrop-filter:blur(24px);border:1px solid rgba(0,212,255,.12);border-radius:40px;padding:6px 10px;pointer-events:auto}
+.nb{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);background:none;border:none;cursor:pointer;padding:8px 16px;border-radius:20px;transition:all .3s;text-transform:uppercase}
+.nb:hover{color:var(--cy)}
+.nb.on{color:#000;background:var(--cy);font-weight:700}
 
-/* SCROLL INDICATOR */
-#scroll-hint{position:fixed;bottom:30px;right:30px;z-index:300;display:flex;flex-direction:column;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;pointer-events:none;transition:opacity .5s}
-#scroll-hint .wheel{width:22px;height:36px;border:1px solid rgba(0,245,255,0.3);border-radius:11px;display:flex;justify-content:center;padding-top:6px}
-#scroll-hint .wheel::after{content:'';width:3px;height:8px;background:var(--cy);border-radius:2px;animation:scrl 1.8s ease-in-out infinite}
-@keyframes scrl{0%,100%{transform:translateY(0);opacity:1}100%{transform:translateY(12px);opacity:0}}
+/* SCROLL */
+#scrl{position:fixed;bottom:28px;right:28px;z-index:20;display:flex;flex-direction:column;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;color:rgba(0,212,255,.4);text-transform:uppercase;pointer-events:none;transition:opacity .5s}
+#scrl .wh{width:20px;height:32px;border:1px solid rgba(0,212,255,.25);border-radius:10px;display:flex;justify-content:center;padding-top:5px}
+#scrl .wh::after{content:'';width:2px;height:6px;background:var(--cy);border-radius:1px;animation:ws 2s ease-in-out infinite}
+@keyframes ws{0%,100%{transform:translateY(0);opacity:1}80%{transform:translateY(10px);opacity:0}}
 
-/* ═══ HERO PANEL ═══ */
-#p-hero{justify-content:flex-start;align-items:flex-end;padding:0 clamp(24px,6vw,80px) clamp(40px,8vh,80px)}
-.hero-tag{font-family:'Space Mono',monospace;font-size:clamp(9px,1.2vw,11px);letter-spacing:3px;color:var(--cy);text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:14px}
-.hero-tag::before{content:'';width:30px;height:1px;background:var(--cy);flex-shrink:0}
-.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--gr);display:inline-block;animation:pdot 2s ease-in-out infinite;margin-right:8px}
-@keyframes pdot{0%,100%{box-shadow:0 0 0 0 rgba(0,255,140,.5)}60%{box-shadow:0 0 0 8px rgba(0,255,140,0)}}
-.hero-name{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(52px,10vw,130px);line-height:.88;letter-spacing:-3px;margin-bottom:20px}
-.hero-name .line1{display:block;color:var(--text)}
-.hero-name .line2{display:block;-webkit-text-stroke:2px var(--cy);color:transparent}
-.hero-desc{font-size:clamp(13px,1.6vw,16px);color:var(--muted);line-height:1.8;max-width:480px;margin-bottom:36px}
-.hero-desc strong{color:var(--text);font-weight:600}
-.hero-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:40px}
-.chip{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;padding:7px 14px;border:1px solid;border-radius:2px}
-.chip.cy{border-color:rgba(0,245,255,.3);color:var(--cy);background:rgba(0,245,255,.05)}
-.chip.or{border-color:rgba(255,69,0,.35);color:var(--or);background:rgba(255,69,0,.06)}
-.chip.gr{border-color:rgba(0,255,140,.3);color:var(--gr);background:rgba(0,255,140,.05)}
-.hero-btns{display:flex;gap:14px;flex-wrap:wrap}
-.btn-p{display:inline-flex;align-items:center;gap:10px;background:var(--cy);color:#000;padding:13px 28px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;border:none;cursor:pointer;border-radius:2px;transition:all .3s;text-decoration:none;position:relative;overflow:hidden}
-.btn-p::after{content:'';position:absolute;inset:0;background:var(--or);transform:translateX(-101%);transition:transform .4s cubic-bezier(.16,1,.3,1)}
-.btn-p:hover::after{transform:translateX(0)}
-.btn-p span,.btn-p svg{position:relative;z-index:1}
-.btn-p:hover{color:#fff}
-.btn-g{display:inline-flex;align-items:center;gap:10px;color:var(--muted);padding:13px 28px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:400;border:1px solid rgba(255,255,255,0.15);cursor:pointer;border-radius:2px;transition:all .3s;text-decoration:none;background:none}
-.btn-g:hover{border-color:var(--cy);color:var(--cy)}
+/* PROGRESS */
+#pg{position:fixed;left:18px;top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+.pg-dot{width:6px;height:6px;border-radius:50%;border:1px solid rgba(0,212,255,.3);cursor:pointer;transition:all .35s;background:transparent}
+.pg-dot.on{background:var(--cy);box-shadow:0 0 8px var(--cy);border-color:var(--cy);height:20px;border-radius:3px}
 
-/* ═══ SECTION BASE ═══ */
-.sec-ovl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:4px;color:var(--cy);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:12px}
-.sec-ovl::before{content:'';width:22px;height:1px;background:var(--cy)}
-.sec-h{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(32px,5vw,64px);line-height:.92;letter-spacing:-2px;margin-bottom:12px}
-.sec-h em{font-style:italic;color:var(--cy)}
+/* PANELS */
+.panel{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .8s cubic-bezier(.16,1,.3,1);padding:clamp(60px,8vh,100px) clamp(24px,6vw,80px) 60px}
+.panel.show{opacity:1;pointer-events:auto}
 
-/* ═══ ABOUT PANEL ═══ */
-#p-about .panel-inner{display:grid;grid-template-columns:1fr 1.4fr;gap:60px;align-items:center}
-.about-visual{position:relative}
-.about-photo{width:100%;max-width:280px;aspect-ratio:3/4;border-radius:4px;overflow:hidden;border:1px solid var(--bd);position:relative}
-.about-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.about-photo::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(2,2,10,.7))}
-.about-float-card{position:absolute;bottom:-20px;right:-20px;background:rgba(2,2,10,0.95);border:1px solid var(--bd);border-radius:3px;padding:16px 20px;backdrop-filter:blur(20px)}
-.afc-val{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--cy);line-height:1}
-.afc-lab{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);margin-top:4px}
-.about-text p{font-size:clamp(13px,1.5vw,15px);color:var(--muted);line-height:1.9;margin-bottom:16px}
-.about-text p strong{color:var(--text)}
-.abt-items{display:flex;flex-direction:column;gap:10px;margin:24px 0}
-.abt-item{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid var(--bd);border-radius:2px;background:rgba(0,245,255,0.02)}
-.abt-ic{font-size:18px;flex-shrink:0}
-.abt-item-t{font-size:13px;font-weight:600;color:var(--text)}
-.abt-item-s{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.5px}
-@media(max-width:768px){
-  #p-about .panel-inner{grid-template-columns:1fr}
-  .about-photo{max-width:160px}
-}
+/* ENTRY ANIM */
+.fade-up{opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1)}
+.fade-up.in{opacity:1;transform:none}
 
-/* ═══ SKILLS PANEL ═══ */
-#p-skills .panel-inner{width:100%;max-width:1000px}
-.skills-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:40px}
-.skill-card{background:rgba(2,2,10,0.85);border:1px solid var(--bd);border-radius:3px;padding:20px 16px;transition:all .3s;cursor:default;position:relative;overflow:hidden}
-.skill-card::before{content:'';position:absolute;top:0;left:0;right:100%;height:2px;background:var(--cy);transition:right .5s cubic-bezier(.16,1,.3,1)}
-.skill-card:hover::before{right:0}
-.skill-card:hover{border-color:rgba(0,245,255,.25);transform:translateY(-4px)}
-.skill-card:nth-child(2)::before{background:var(--or)}
-.skill-card:nth-child(3)::before{background:var(--gr)}
-.skill-card:nth-child(4)::before{background:var(--pu)}
-.sk-icon{font-size:22px;margin-bottom:12px}
-.sk-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;letter-spacing:.3px}
-.sk-tags{display:flex;flex-wrap:wrap;gap:5px}
-.sk-tag{font-family:'Space Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;border:1px solid rgba(255,255,255,.08);color:var(--muted);letter-spacing:.3px}
-@media(max-width:900px){.skills-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.skills-grid{grid-template-columns:1fr}}
+/* SECTION FLASH */
+#sfx{position:fixed;inset:0;z-index:100;background:rgba(0,212,255,.07);opacity:0;pointer-events:none;transition:opacity .15s}
+#sfx.flash{opacity:1}
+#stitle{position:fixed;inset:0;z-index:101;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .4s}
+#stitle span{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(60px,12vw,120px);letter-spacing:-4px;color:rgba(0,212,255,.08);text-transform:uppercase;white-space:nowrap}
+#stitle.show{opacity:1}
 
-/* ═══ PROJECTS PANEL ═══ */
-#p-projects .panel-inner{max-width:1100px;width:100%}
-.proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px;max-height:55vh;overflow-y:auto;padding-right:4px}
-.proj-grid::-webkit-scrollbar{width:2px}
-.proj-grid::-webkit-scrollbar-thumb{background:var(--cy)}
-.proj-card{background:rgba(2,2,10,0.88);border:1px solid var(--bd);border-radius:3px;overflow:hidden;transition:all .35s;cursor:pointer;position:relative}
-.proj-card:hover{border-color:rgba(0,245,255,.3);transform:translateY(-4px)}
-.proj-card-img{aspect-ratio:16/9;overflow:hidden;position:relative}
-.proj-card-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}
-.proj-card:hover .proj-card-img img{transform:scale(1.06)}
-.proj-card-img-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(2,2,10,.85))}
-.proj-card-body{padding:16px}
-.proj-card-cat{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--cy);text-transform:uppercase;margin-bottom:6px}
-.proj-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.35}
-.proj-card-tags{display:flex;flex-wrap:wrap;gap:4px}
-.proj-card-tag{font-family:'Space Mono',monospace;font-size:8px;padding:2px 7px;border-radius:2px;border:1px solid rgba(255,255,255,.08);color:var(--muted)}
-@media(max-width:900px){.proj-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.proj-grid{grid-template-columns:1fr}}
+/* ── HERO ── */
+#p0{justify-content:flex-start;align-items:flex-end;padding-bottom:clamp(50px,10vh,90px)}
+.hero-tag{font-family:'Space Mono',monospace;font-size:clamp(8px,1.2vw,10px);letter-spacing:4px;color:var(--cy);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:12px}
+.hero-tag::before{content:'';width:32px;height:1px;background:linear-gradient(to right,transparent,var(--cy))}
+.pdot{width:6px;height:6px;border-radius:50%;background:var(--gr);display:inline-block;animation:pdot 2s ease-in-out infinite;margin-right:6px;box-shadow:0 0 8px var(--gr)}
+@keyframes pdot{0%,100%{box-shadow:0 0 4px var(--gr)}60%{box-shadow:0 0 16px var(--gr),0 0 6px var(--gr)}}
+.hero-n{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(56px,11vw,140px);line-height:.85;letter-spacing:-4px;margin-bottom:22px}
+.hero-n .l1{display:block;color:var(--text);text-shadow:0 0 80px rgba(0,212,255,.15)}
+.hero-n .l2{display:block;-webkit-text-stroke:1.5px var(--cy);color:transparent;filter:drop-shadow(0 0 20px rgba(0,212,255,.4))}
+.hero-sub{font-size:clamp(13px,1.6vw,15px);color:var(--muted);line-height:1.9;max-width:500px;margin-bottom:30px}
+.hero-sub strong{color:var(--text)}
+.htags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:36px}
+.htag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.8px;padding:5px 12px;border-radius:2px;border:1px solid rgba(0,212,255,.25);color:rgba(0,212,255,.8);background:rgba(0,212,255,.04);transition:all .3s}
+.htag:hover{background:rgba(0,212,255,.1);box-shadow:0 0 12px rgba(0,212,255,.2)}
+.htag.o{border-color:rgba(255,85,0,.25);color:rgba(255,85,0,.8);background:rgba(255,85,0,.04)}
+.htag.o:hover{background:rgba(255,85,0,.1)}
+.htag.g{border-color:rgba(0,255,140,.25);color:rgba(0,255,140,.8);background:rgba(0,255,140,.04)}
+.hbtns{display:flex;gap:12px;flex-wrap:wrap}
+.bp{display:inline-flex;align-items:center;gap:9px;background:var(--cy);color:#000;padding:13px 28px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;border:none;cursor:pointer;border-radius:2px;transition:all .3s;text-decoration:none;box-shadow:0 0 20px rgba(0,212,255,.3),inset 0 1px 0 rgba(255,255,255,.3)}
+.bp:hover{background:var(--or);box-shadow:0 0 30px rgba(255,85,0,.4);color:#fff}
+.bg{display:inline-flex;align-items:center;gap:9px;color:var(--muted);padding:13px 28px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:400;border:1px solid rgba(255,255,255,.15);cursor:pointer;border-radius:2px;transition:all .3s;text-decoration:none;background:rgba(0,0,0,.3);backdrop-filter:blur(8px)}
+.bg:hover{border-color:var(--cy);color:var(--cy);box-shadow:0 0 12px rgba(0,212,255,.15)}
 
-/* ═══ JOURNEY PANEL ═══ */
-#p-journey .panel-inner{max-width:800px;width:100%}
-.tl{padding-left:40px;position:relative;margin-top:40px;max-height:55vh;overflow-y:auto;padding-right:8px}
+/* ── ABOUT ── */
+#p1 .wrap{display:grid;grid-template-columns:auto 1fr;gap:clamp(32px,5vw,72px);align-items:center;width:100%;max-width:900px}
+.photo-w{position:relative;flex-shrink:0}
+.photo-frame{width:clamp(180px,20vw,240px);aspect-ratio:3/4;border-radius:3px;overflow:hidden;border:1px solid rgba(0,212,255,.2);box-shadow:0 0 40px rgba(0,212,255,.1),0 0 80px rgba(0,0,0,.8);position:relative}
+.photo-frame img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.9) contrast(1.05)}
+.photo-frame::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 55%,rgba(0,0,10,.7));pointer-events:none}
+.pfloat{position:absolute;bottom:-16px;right:-16px;background:rgba(0,0,10,.95);border:1px solid rgba(0,212,255,.2);border-radius:2px;padding:12px 18px;backdrop-filter:blur(20px);box-shadow:0 0 20px rgba(0,212,255,.1)}
+.pfv{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:var(--cy);line-height:1;text-shadow:0 0 16px rgba(0,212,255,.5)}
+.pfl{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);margin-top:3px}
+.ovl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:4px;color:var(--cy);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.ovl::before{content:'';width:20px;height:1px;background:linear-gradient(to right,transparent,var(--cy))}
+.sh{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:.92;letter-spacing:-2px;margin-bottom:14px}
+.sh em{font-style:italic;color:var(--cy);text-shadow:0 0 20px rgba(0,212,255,.4)}
+.about-p{font-size:clamp(12px,1.4vw,14px);color:var(--muted);line-height:1.9;margin-bottom:12px}
+.about-p strong{color:var(--text)}
+.abits{display:flex;flex-direction:column;gap:8px;margin:20px 0}
+.abit{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid rgba(0,212,255,.1);border-radius:2px;background:rgba(0,212,255,.02);transition:all .3s}
+.abit:hover{border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.04);transform:translateX(4px)}
+.abit-ic{font-size:16px}
+.abit-t{font-size:12px;font-weight:600;color:var(--text)}
+.abit-s{font-family:'Space Mono',monospace;font-size:8.5px;color:var(--muted);margin-top:2px;letter-spacing:.3px}
+@media(max-width:700px){#p1 .wrap{grid-template-columns:1fr}.photo-frame{width:140px;aspect-ratio:1/1}}
+
+/* ── SKILLS ── */
+#p2 .wrap{width:100%;max-width:960px}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:36px}
+.sc{background:rgba(0,0,10,.8);border:1px solid rgba(0,212,255,.1);border-radius:3px;padding:18px 14px;transition:all .4s;position:relative;overflow:hidden;backdrop-filter:blur(16px)}
+.sc::before{content:'';position:absolute;top:0;left:0;right:100%;height:2px;transition:right .6s cubic-bezier(.16,1,.3,1)}
+.sc:nth-child(1)::before{background:var(--cy)}
+.sc:nth-child(2)::before{background:var(--or)}
+.sc:nth-child(3)::before{background:var(--yw)}
+.sc:nth-child(4)::before{background:var(--pu)}
+.sc:hover::before{right:0}
+.sc:hover{border-color:rgba(0,212,255,.25);transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,0,0,.6),0 0 20px rgba(0,212,255,.05)}
+.sc-ic{font-size:20px;margin-bottom:10px}
+.sc-t{font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px;letter-spacing:.3px}
+.sc-tags{display:flex;flex-wrap:wrap;gap:4px}
+.st{font-family:'Space Mono',monospace;font-size:8.5px;padding:3px 7px;border-radius:2px;border:1px solid rgba(255,255,255,.08);color:var(--muted);letter-spacing:.3px;transition:all .2s}
+.st:hover{border-color:rgba(0,212,255,.2);color:rgba(0,212,255,.7)}
+@media(max-width:900px){.sg{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.sg{grid-template-columns:1fr}}
+
+/* ── PROJECTS ── */
+#p3 .wrap{width:100%;max-width:1080px}
+.pg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:32px;max-height:58vh;overflow-y:auto;padding-right:6px}
+.pg-grid::-webkit-scrollbar{width:2px}
+.pg-grid::-webkit-scrollbar-thumb{background:rgba(0,212,255,.3)}
+.pc{background:rgba(0,0,10,.85);border:1px solid rgba(0,212,255,.1);border-radius:3px;overflow:hidden;transition:all .4s;cursor:pointer;backdrop-filter:blur(16px)}
+.pc:hover{border-color:rgba(0,212,255,.3);transform:translateY(-5px);box-shadow:0 20px 50px rgba(0,0,0,.7),0 0 20px rgba(0,212,255,.08)}
+.pc-img{aspect-ratio:16/9;overflow:hidden;position:relative}
+.pc-img img{width:100%;height:100%;object-fit:cover;transition:transform .6s;display:block;filter:saturate(.8)}
+.pc:hover .pc-img img{transform:scale(1.08);filter:saturate(1)}
+.pc-ov{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 35%,rgba(0,0,10,.8))}
+.pc-b{padding:14px}
+.pc-cat{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--cy);text-transform:uppercase;margin-bottom:5px}
+.pc-t{font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.35}
+.pc-tags{display:flex;flex-wrap:wrap;gap:3px}
+.pc-tag{font-family:'Space Mono',monospace;font-size:7.5px;padding:2px 6px;border-radius:2px;border:1px solid rgba(255,255,255,.07);color:var(--muted)}
+@media(max-width:900px){.pg-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:550px){.pg-grid{grid-template-columns:1fr}}
+
+/* ── JOURNEY ── */
+#p4 .wrap{width:100%;max-width:760px}
+.tl{padding-left:36px;position:relative;margin-top:32px;max-height:55vh;overflow-y:auto;padding-right:6px}
 .tl::-webkit-scrollbar{width:2px}
-.tl::-webkit-scrollbar-thumb{background:var(--cy)}
-.tl-line{position:absolute;left:14px;top:0;bottom:0;width:1px;background:linear-gradient(var(--cy) 0%,transparent 100%)}
-.tl-item{position:relative;margin-bottom:32px;padding:20px 24px;border:1px solid var(--bd);border-radius:3px;background:rgba(0,245,255,0.02);transition:all .3s}
-.tl-item:hover{border-color:rgba(0,245,255,.25);background:rgba(0,245,255,.04)}
-.tl-dot{position:absolute;left:-32px;top:22px;width:14px;height:14px;border-radius:50%;border:2px solid var(--cy);background:var(--bg);display:flex;align-items:center;justify-content:center}
-.tl-dot::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--cy);animation:pdot 2s ease-in-out infinite}
-.tl-yr{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--cy);text-transform:uppercase;margin-bottom:6px}
-.tl-ttl{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.4}
-.tl-chp{display:inline-block;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;padding:3px 9px;border-radius:2px;text-transform:uppercase;margin-top:8px}
-.cy-chp{border:1px solid rgba(0,245,255,.4);color:var(--cy);background:rgba(0,245,255,.07)}
-.gr-chp{border:1px solid rgba(0,255,140,.4);color:var(--gr);background:rgba(0,255,140,.07)}
-.or-chp{border:1px solid rgba(255,69,0,.4);color:var(--or);background:rgba(255,69,0,.07)}
+.tl::-webkit-scrollbar-thumb{background:rgba(0,212,255,.3)}
+.tl-line{position:absolute;left:12px;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--cy) 0%,transparent 100%)}
+.tli{position:relative;margin-bottom:24px;padding:18px 20px;border:1px solid rgba(0,212,255,.1);border-radius:3px;background:rgba(0,0,10,.7);transition:all .35s;backdrop-filter:blur(12px)}
+.tli:hover{border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.03);transform:translateX(4px);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.tl-dot{position:absolute;left:-29px;top:20px;width:13px;height:13px;border-radius:50%;border:2px solid var(--cy);background:#000;display:flex;align-items:center;justify-content:center;box-shadow:0 0 8px rgba(0,212,255,.4)}
+.tl-dot::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--cy);box-shadow:0 0 6px var(--cy)}
+.tl-yr{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--cy);text-transform:uppercase;margin-bottom:5px}
+.tl-ttl{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.4}
+.tchip{display:inline-block;font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:2px;padding:3px 8px;border-radius:2px;text-transform:uppercase;margin-right:5px;margin-top:5px}
+.tc{border:1px solid rgba(0,212,255,.35);color:var(--cy);background:rgba(0,212,255,.07)}
+.tg{border:1px solid rgba(0,255,140,.35);color:var(--gr);background:rgba(0,255,140,.07)}
+.to{border:1px solid rgba(255,85,0,.35);color:var(--or);background:rgba(255,85,0,.07)}
 
-/* ═══ CONTACT PANEL ═══ */
-#p-contact .panel-inner{max-width:820px;width:100%}
-.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:40px}
-.c-info-ttl{font-size:20px;font-weight:700;margin-bottom:12px;letter-spacing:-.5px}
-.c-info-sub{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:28px}
-.c-links{display:flex;flex-direction:column;gap:8px}
-.c-link{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid var(--bd);border-radius:2px;text-decoration:none;color:inherit;transition:all .3s}
-.c-link:hover{border-color:rgba(0,245,255,.3);transform:translateX(4px)}
-.c-link-ic{width:34px;height:34px;border-radius:2px;background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-.c-link-lab{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:2px}
-.c-link-val{font-size:12px;font-weight:600;color:var(--cy)}
-.c-form{display:flex;flex-direction:column;gap:12px}
-.cf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.cf-lab{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:5px;display:block}
-.cf-in{background:rgba(2,2,10,0.9);border:1px solid rgba(255,255,255,.1);border-radius:2px;padding:11px 14px;color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;width:100%;transition:border-color .25s;resize:none}
-.cf-in:focus{border-color:var(--cy)}
-.cf-in::placeholder{color:var(--muted);font-size:10px}
-.cf-sub{background:var(--cy);color:#000;padding:13px;border-radius:2px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;border:none;cursor:pointer;font-weight:700;transition:all .3s;width:100%;position:relative;overflow:hidden}
-.cf-sub::after{content:'';position:absolute;inset:0;background:var(--or);transform:translateX(-101%);transition:transform .4s cubic-bezier(.16,1,.3,1)}
-.cf-sub:hover::after{transform:translateX(0)}
-.cf-sub span{position:relative;z-index:1}
-.cf-sub:hover{color:#fff}
-@media(max-width:720px){.contact-grid{grid-template-columns:1fr}.cf-row{grid-template-columns:1fr}}
+/* ── COURSES ── */
+#p5 .wrap{width:100%;max-width:880px}
+.cg{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:32px}
+.cc{background:rgba(0,0,10,.85);border:1px solid rgba(0,212,255,.1);border-radius:3px;padding:20px 16px;transition:all .4s;position:relative;overflow:hidden;backdrop-filter:blur(16px)}
+.cc::before{content:'';position:absolute;top:0;left:0;right:100%;height:2px;transition:right .6s}
+.cc:nth-child(1)::before{background:var(--cy)}
+.cc:nth-child(2)::before{background:var(--or)}
+.cc:nth-child(3)::before{background:var(--pu)}
+.cc:hover::before{right:0}
+.cc:hover{border-color:rgba(0,212,255,.22);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.cc-ic{font-size:20px;margin-bottom:10px}
+.cc-t{font-size:12px;font-weight:700;margin-bottom:12px;letter-spacing:.2px}
+.cc-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.cc-list li{font-family:'Space Mono',monospace;font-size:8.5px;color:var(--muted);padding-left:12px;position:relative;line-height:1.6;letter-spacing:.2px}
+.cc-list li::before{content:'→';position:absolute;left:0;color:var(--cy);font-size:9px}
+@media(max-width:700px){.cg{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.cg{grid-template-columns:1fr}}
 
-/* ═══ COURSES PANEL ═══ */
-#p-courses .panel-inner{max-width:900px;width:100%}
-.crs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:36px}
-.crs-card{background:rgba(2,2,10,.88);border:1px solid var(--bd);border-radius:3px;padding:22px 18px;position:relative;overflow:hidden;transition:all .3s}
-.crs-card::before{content:'';position:absolute;top:0;left:0;right:100%;height:2px;background:var(--cy);transition:right .5s cubic-bezier(.16,1,.3,1)}
-.crs-card:nth-child(2)::before{background:var(--or)}
-.crs-card:nth-child(3)::before{background:var(--pu)}
-.crs-card:hover::before{right:0}
-.crs-card:hover{border-color:rgba(0,245,255,.2);transform:translateY(-3px)}
-.crs-ic{font-size:22px;margin-bottom:12px}
-.crs-title{font-size:13px;font-weight:700;margin-bottom:14px;letter-spacing:-.2px}
-.crs-list{list-style:none;display:flex;flex-direction:column;gap:7px}
-.crs-list li{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);padding-left:14px;position:relative;line-height:1.6;letter-spacing:.3px}
-.crs-list li::before{content:'→';position:absolute;left:0;color:var(--cy);font-size:9px}
-@media(max-width:750px){.crs-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:500px){.crs-grid{grid-template-columns:1fr}}
+/* ── CONTACT ── */
+#p6 .wrap{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,56px);width:100%;max-width:860px}
+.ci-t{font-size:clamp(16px,2.5vw,20px);font-weight:700;margin-bottom:10px;letter-spacing:-.4px}
+.ci-s{font-size:12px;color:var(--muted);line-height:1.85;margin-bottom:24px}
+.clinks{display:flex;flex-direction:column;gap:7px}
+.clnk{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid rgba(0,212,255,.1);border-radius:2px;text-decoration:none;color:inherit;transition:all .3s;background:rgba(0,0,10,.5)}
+.clnk:hover{border-color:rgba(0,212,255,.3);transform:translateX(4px);box-shadow:0 4px 20px rgba(0,212,255,.08)}
+.cl-ic{width:32px;height:32px;border-radius:2px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.15);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.cl-lab{font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:2px;color:var(--muted);margin-bottom:2px}
+.cl-val{font-size:11px;font-weight:600;color:var(--cy)}
+.cform{display:flex;flex-direction:column;gap:10px}
+.cfr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.flb{font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;display:block;text-transform:uppercase}
+.fin{background:rgba(0,0,10,.9);border:1px solid rgba(255,255,255,.08);border-radius:2px;padding:10px 13px;color:var(--text);font-family:'Space Mono',monospace;font-size:10px;outline:none;width:100%;transition:border-color .25s,box-shadow .25s;resize:none}
+.fin:focus{border-color:var(--cy);box-shadow:0 0 0 3px rgba(0,212,255,.06)}
+.fin::placeholder{color:rgba(240,244,255,.2);font-size:9px}
+.fsub{background:var(--cy);color:#000;padding:12px;border-radius:2px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;border:none;cursor:pointer;font-weight:700;transition:all .3s;width:100%;box-shadow:0 0 20px rgba(0,212,255,.2)}
+.fsub:hover{background:var(--or);box-shadow:0 0 30px rgba(255,85,0,.3);color:#fff}
+@media(max-width:700px){#p6 .wrap{grid-template-columns:1fr}.cfr{grid-template-columns:1fr}}
 
 /* MODAL */
-.modal-ov{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.9);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;padding:20px}
-.modal-ov.open{opacity:1;pointer-events:auto}
-.modal-bx{background:rgba(10,10,20,.98);border:1px solid var(--bd);border-radius:4px;max-width:600px;width:100%;padding:32px;max-height:85vh;overflow-y:auto;transform:scale(.94);transition:transform .3s cubic-bezier(.16,1,.3,1)}
-.modal-ov.open .modal-bx{transform:scale(1)}
-.modal-close{float:right;background:none;border:1px solid rgba(255,255,255,.15);color:var(--muted);width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;border-radius:2px;transition:all .2s}
-.modal-close:hover{border-color:var(--cy);color:var(--cy)}
-.modal-cat{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--cy);text-transform:uppercase;margin-bottom:8px}
-.modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-1px;margin-bottom:16px}
-.modal-img{width:100%;height:180px;object-fit:cover;border-radius:2px;border:1px solid var(--bd);margin-bottom:16px}
-.modal-desc{font-size:13px;color:var(--muted);line-height:1.85;margin-bottom:14px}
-.modal-tags{display:flex;flex-wrap:wrap;gap:6px}
-.modal-tag{font-family:'Space Mono',monospace;font-size:9px;padding:4px 10px;border-radius:2px;border:1px solid rgba(0,245,255,.25);color:var(--cy);background:rgba(0,245,255,.06)}
+.mov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.92);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .35s;padding:20px}
+.mov.open{opacity:1;pointer-events:auto}
+.mbx{background:rgba(5,5,15,.98);border:1px solid rgba(0,212,255,.15);border-radius:4px;max-width:580px;width:100%;padding:28px;max-height:88vh;overflow-y:auto;transform:scale(.93) translateY(16px);transition:transform .35s cubic-bezier(.16,1,.3,1);box-shadow:0 0 60px rgba(0,0,0,.9),0 0 30px rgba(0,212,255,.05)}
+.mov.open .mbx{transform:scale(1) translateY(0)}
+.mbx::-webkit-scrollbar{width:2px}
+.mbx::-webkit-scrollbar-thumb{background:rgba(0,212,255,.3)}
+.mcl{float:right;background:none;border:1px solid rgba(255,255,255,.12);color:var(--muted);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;border-radius:2px;transition:all .2s}
+.mcl:hover{border-color:var(--cy);color:var(--cy)}
+.mcat{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--cy);text-transform:uppercase;margin-bottom:7px}
+.mtitle{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(18px,3vw,24px);letter-spacing:-1px;margin-bottom:14px}
+.mimg{width:100%;height:170px;object-fit:cover;border-radius:2px;border:1px solid rgba(0,212,255,.15);margin-bottom:14px;display:block;filter:saturate(.85)}
+.mdesc{font-size:12px;color:var(--muted);line-height:1.9;margin-bottom:12px}
+.mtags{display:flex;flex-wrap:wrap;gap:5px}
+.mtag{font-family:'Space Mono',monospace;font-size:8px;padding:3px 9px;border-radius:2px;border:1px solid rgba(0,212,255,.2);color:rgba(0,212,255,.75);background:rgba(0,212,255,.05)}
 
-/* STATS BAR */
-#stats-bar{position:fixed;top:0;left:0;right:0;z-index:350;padding:14px var(--pad,40px);display:flex;gap:clamp(20px,4vw,60px);justify-content:flex-end;pointer-events:none}
-.stat-n{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted)}
-.stat-n strong{color:var(--cy);font-size:14px;margin-right:4px}
-
-/* SECTION DEPTH LABELS */
-#depth-label{position:fixed;bottom:24px;left:24px;z-index:300;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;color:rgba(0,245,255,0.35);text-transform:uppercase;pointer-events:none;transition:opacity .5s}
-
-/* REVEAL ANIMATIONS */
-.rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
-.rv.in{opacity:1;transform:none}
-.rv.d1{transition-delay:.1s}.rv.d2{transition-delay:.2s}.rv.d3{transition-delay:.3s}.rv.d4{transition-delay:.4s}.rv.d5{transition-delay:.5s}
-
-/* SECTION TRANSITION OVERLAY */
-#trans-overlay{position:fixed;inset:0;z-index:600;background:var(--bg);opacity:0;pointer-events:none;transition:opacity .4s}
-#trans-overlay.flash{opacity:1}
-
-/* SECTION LABEL */
-#sec-label{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:700;font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(40px,8vw,80px);letter-spacing:-3px;color:var(--cy);opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap}
-#sec-label.show{opacity:0.12}
+/* FOOTER */
+#ft{position:fixed;bottom:0;left:0;right:0;z-index:15;padding:12px 36px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(0,212,255,.08);background:rgba(0,0,0,.6);backdrop-filter:blur(20px);font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);opacity:0;transition:opacity .5s;pointer-events:none}
+#ft a{color:var(--muted);text-decoration:none;transition:color .2s;pointer-events:auto}
+#ft a:hover{color:var(--cy)}
+#ft .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--cy);text-shadow:0 0 12px rgba(0,212,255,.4)}
 </style>
 </head>
 <body>
 
 <!-- CURSOR -->
-<div id="cur"></div>
-<div id="cur-ring"></div>
+<div id="cur"></div><div id="cur2"></div>
 
-<!-- PROGRESS -->
-<div id="progress-wrap"><div id="progress-bar"></div></div>
+<!-- CINEMATIC OVERLAYS -->
+<div id="vignette"></div>
+<div id="grain"></div>
+<div id="scanlines"></div>
+<div id="lens-flare"></div>
 
 <!-- HUD -->
-<div id="hud">
-  <div id="hud-corners">
-    <div class="c tl"></div><div class="c tr"></div>
-    <div class="c bl"></div><div class="c br"></div>
-  </div>
-</div>
-<div id="scanline"></div>
-<div id="coords" id="coords-txt">X: 000 · Y: 000 · Z: 000</div>
-
-<!-- STATS BAR -->
-<div id="stats-bar">
-  <div class="stat-n"><strong>10+</strong> Projects</div>
-  <div class="stat-n"><strong>8+</strong> Years</div>
-  <div class="stat-n"><strong>ROS2</strong> Expert</div>
+<div id="hud"><div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div></div>
+<div id="hud-data">
+  <span id="hd-fps">FPS: --</span>
+  <span>ROS2 · SLAM · AV</span>
+  <span id="hd-time">--:--:--</span>
 </div>
 
 <!-- NAV -->
 <nav id="nav">
-  <button class="nav-btn active" data-sec="0">Home</button>
-  <button class="nav-btn" data-sec="1">About</button>
-  <button class="nav-btn" data-sec="2">Skills</button>
-  <button class="nav-btn" data-sec="3">Projects</button>
-  <button class="nav-btn" data-sec="4">Journey</button>
-  <button class="nav-btn" data-sec="5">Courses</button>
-  <button class="nav-btn" data-sec="6">Contact</button>
+  <button class="nb on" data-i="0">Home</button>
+  <button class="nb" data-i="1">About</button>
+  <button class="nb" data-i="2">Skills</button>
+  <button class="nb" data-i="3">Projects</button>
+  <button class="nb" data-i="4">Journey</button>
+  <button class="nb" data-i="5">Courses</button>
+  <button class="nb" data-i="6">Contact</button>
 </nav>
 
-<!-- SCROLL HINT -->
-<div id="scroll-hint">
-  <div class="wheel"></div>
-  <span>Scroll</span>
+<!-- PROGRESS DOTS -->
+<div id="pg">
+  <div class="pg-dot on" data-i="0"></div>
+  <div class="pg-dot" data-i="1"></div>
+  <div class="pg-dot" data-i="2"></div>
+  <div class="pg-dot" data-i="3"></div>
+  <div class="pg-dot" data-i="4"></div>
+  <div class="pg-dot" data-i="5"></div>
+  <div class="pg-dot" data-i="6"></div>
 </div>
 
-<!-- DEPTH LABEL -->
-<div id="depth-label">Depth: 0.00</div>
+<!-- SCROLL HINT -->
+<div id="scrl"><div class="wh"></div><span>Scroll</span></div>
 
-<!-- SECTION LABEL -->
-<div id="sec-label"></div>
+<!-- SECTION FX -->
+<div id="sfx"></div>
+<div id="stitle"><span id="stspan"></span></div>
 
-<!-- TRANSITION OVERLAY -->
-<div id="trans-overlay"></div>
-
-<!-- CANVAS (Three.js goes here) -->
-<canvas id="c3d"></canvas>
+<!-- WebGL CANVAS -->
+<canvas id="bg"></canvas>
 
 <!-- ═══ PANELS ═══ -->
 
 <!-- HERO -->
-<div class="panel" id="p-hero">
-  <div class="hero-content">
-    <div class="hero-tag">
-      <span class="pulse-dot"></span>Available for Opportunities — Global
-    </div>
-    <h1 class="hero-name">
-      <span class="line1">Nithin</span>
-      <span class="line2">Rajan</span>
+<div class="panel show" id="p0">
+  <div>
+    <div class="hero-tag fade-up in"><span class="pdot"></span>Available for Opportunities — Global</div>
+    <h1 class="hero-n fade-up in" style="transition-delay:.1s">
+      <span class="l1">Nithin</span>
+      <span class="l2">Rajan</span>
     </h1>
-    <p class="hero-desc">
+    <p class="hero-sub fade-up in" style="transition-delay:.2s">
       Building machines that <strong>perceive, plan, and act.</strong><br>
-      Specialised in <strong style="color:var(--cy)">ROS2 · SLAM · Sensor Fusion</strong> and autonomous systems — from robotic arms to Level 3 self-driving vehicles.
+      Specialised in <strong style="color:var(--cy)">ROS2 · SLAM · Sensor Fusion</strong> — from robotic arms to Level&nbsp;3 self-driving vehicles.
     </p>
-    <div class="hero-chips">
-      <span class="chip cy">ROS2</span>
-      <span class="chip cy">SLAM</span>
-      <span class="chip cy">Sensor Fusion</span>
-      <span class="chip or">Automotive Testing</span>
-      <span class="chip or">HIL · CANoe</span>
-      <span class="chip gr">C++ · Python</span>
+    <div class="htags fade-up in" style="transition-delay:.3s">
+      <span class="htag">ROS2</span><span class="htag">SLAM</span><span class="htag">Sensor Fusion</span>
+      <span class="htag o">Automotive Testing</span><span class="htag o">HIL · CANoe</span>
+      <span class="htag g">C++ · Python</span><span class="htag g">LiDAR · IMU</span>
     </div>
-    <div class="hero-btns">
-      <button class="btn-p" onclick="goToSection(3)"><span>Explore Projects</span><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-      <a href="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/Nithin_Rajan_Resume.pdf" class="btn-g" download><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download CV</span></a>
+    <div class="hbtns fade-up in" style="transition-delay:.4s">
+      <button class="bp" onclick="go(3)"><span>Explore Projects</span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+      <a href="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/Nithin_Rajan_Resume.pdf" class="bg" download><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download CV</span></a>
     </div>
   </div>
 </div>
 
 <!-- ABOUT -->
-<div class="panel" id="p-about">
-  <div class="panel-inner">
-    <div class="about-visual rv">
-      <div class="about-photo">
+<div class="panel" id="p1">
+  <div class="wrap">
+    <div class="photo-w fade-up">
+      <div class="photo-frame">
         <img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Nithin%20Rajan.jpg" alt="Nithin Rajan" loading="lazy">
-        <div class="photo-overlay"></div>
       </div>
-      <div class="about-float-card">
-        <div class="afc-val">8.73</div>
-        <div class="afc-lab">CGPA · M.Tech</div>
-      </div>
+      <div class="pfloat"><div class="pfv">8.73</div><div class="pfl">CGPA · M.Tech</div></div>
     </div>
-    <div class="about-text">
-      <div class="sec-ovl rv">Who I Am</div>
-      <h2 class="sec-h rv d1">Machines That<br><em>Move &amp; Think</em></h2>
-      <p class="rv d2">
-        M.Tech Robotics graduate from SRM University with <strong>8+ years</strong> of hands-on experience spanning autonomous vehicles, robotic arms, and automotive embedded systems.
-      </p>
-      <p class="rv d2">
-        I've delivered projects for <strong>Tata Elxsi, Wipro, Valeo, Forvia France, and Alpine</strong> — working across simulation, HIL testing, sensor fusion, and Level 3 AV development.
-      </p>
-      <div class="abt-items rv d3">
-        <div class="abt-item">
-          <div class="abt-ic">🤖</div>
-          <div><div class="abt-item-t">Autonomous Systems</div><div class="abt-item-s">SLAM · Path Planning · Sensor Fusion · Level 3 AV</div></div>
-        </div>
-        <div class="abt-item">
-          <div class="abt-ic">🚗</div>
-          <div><div class="abt-item-t">Automotive Testing</div><div class="abt-item-s">BMW · Alpine · Forvia (France) · BYD · HIL Testing</div></div>
-        </div>
-        <div class="abt-item">
-          <div class="abt-ic">⚡</div>
-          <div><div class="abt-item-t">Embedded Systems</div><div class="abt-item-s">ARM · 8051 · AVR · Arduino · CAPL · CANoe</div></div>
-        </div>
+    <div>
+      <div class="ovl fade-up">Who I Am</div>
+      <h2 class="sh fade-up" style="transition-delay:.1s">Machines That<br><em>Move &amp; Think</em></h2>
+      <p class="about-p fade-up" style="transition-delay:.15s">M.Tech Robotics graduate from SRM University with <strong>8+ years</strong> of hands-on experience spanning autonomous vehicles, robotic arms, and automotive embedded systems.</p>
+      <p class="about-p fade-up" style="transition-delay:.2s">Delivered projects for <strong>Tata Elxsi, Wipro, Valeo, Forvia France, and Alpine</strong> — sensor fusion, HIL testing, and Level 3 AV development.</p>
+      <div class="abits fade-up" style="transition-delay:.25s">
+        <div class="abit"><div class="abit-ic">🤖</div><div><div class="abit-t">Autonomous Systems</div><div class="abit-s">SLAM · Path Planning · Sensor Fusion · Level 3 AV</div></div></div>
+        <div class="abit"><div class="abit-ic">🚗</div><div><div class="abit-t">Automotive Testing</div><div class="abit-s">BMW · Alpine · Forvia France · BYD · HIL Testing</div></div></div>
+        <div class="abit"><div class="abit-ic">⚡</div><div><div class="abit-t">Embedded Systems</div><div class="abit-s">ARM · 8051 · AVR · Arduino · CAPL · CANoe</div></div></div>
       </div>
-      <button class="btn-p rv d4" onclick="goToSection(6)"><span>Let's Talk</span></button>
+      <button class="bp fade-up" style="transition-delay:.3s;display:inline-flex" onclick="go(6)"><span>Let's Talk</span></button>
     </div>
   </div>
 </div>
 
 <!-- SKILLS -->
-<div class="panel" id="p-skills">
-  <div class="panel-inner">
-    <div class="sec-ovl rv">Technical Arsenal</div>
-    <h2 class="sec-h rv d1">My <em>Stack</em></h2>
-    <p style="color:var(--muted);font-size:14px;max-width:480px" class="rv d2">A decade of hands-on engineering across robotics, automotive, and embedded domains.</p>
-    <div class="skills-grid rv d2">
-      <div class="skill-card">
-        <div class="sk-icon">🤖</div>
-        <div class="sk-title">Robotics &amp; ROS</div>
-        <div class="sk-tags">
-          <span class="sk-tag">ROS</span><span class="sk-tag">ROS2</span><span class="sk-tag">MoveIt</span><span class="sk-tag">Gazebo</span><span class="sk-tag">SLAM</span><span class="sk-tag">OMPL</span><span class="sk-tag">OpenCV</span><span class="sk-tag">PCL</span><span class="sk-tag">Nav2</span><span class="sk-tag">RVIZ</span><span class="sk-tag">LiDAR</span><span class="sk-tag">IMU</span>
-        </div>
-      </div>
-      <div class="skill-card">
-        <div class="sk-icon">💻</div>
-        <div class="sk-title">Programming</div>
-        <div class="sk-tags">
-          <span class="sk-tag">Python</span><span class="sk-tag">C++</span><span class="sk-tag">C</span><span class="sk-tag">MATLAB</span><span class="sk-tag">CAPL</span><span class="sk-tag">Bash</span>
-        </div>
-      </div>
-      <div class="skill-card">
-        <div class="sk-icon">🚗</div>
-        <div class="sk-title">Automotive</div>
-        <div class="sk-tags">
-          <span class="sk-tag">CANoe</span><span class="sk-tag">VTest Studio</span><span class="sk-tag">HIL Testing</span><span class="sk-tag">UDS Protocol</span><span class="sk-tag">LIN Bus</span><span class="sk-tag">CAN Bus</span><span class="sk-tag">BDD</span><span class="sk-tag">JIRA</span>
-        </div>
-      </div>
-      <div class="skill-card">
-        <div class="sk-icon">⚙️</div>
-        <div class="sk-title">Embedded</div>
-        <div class="sk-tags">
-          <span class="sk-tag">ARM</span><span class="sk-tag">Arduino</span><span class="sk-tag">8051</span><span class="sk-tag">AVR</span><span class="sk-tag">Keil µVision</span><span class="sk-tag">IAR Workbench</span><span class="sk-tag">SolidWorks</span>
-        </div>
-      </div>
+<div class="panel" id="p2">
+  <div class="wrap">
+    <div class="ovl fade-up">Technical Arsenal</div>
+    <h2 class="sh fade-up" style="transition-delay:.1s">My <em>Stack</em></h2>
+    <p style="color:var(--muted);font-size:13px;max-width:480px" class="fade-up" style="transition-delay:.15s">A decade of hands-on engineering across robotics, automotive, and embedded domains.</p>
+    <div class="sg fade-up" style="transition-delay:.2s">
+      <div class="sc"><div class="sc-ic">🤖</div><div class="sc-t">Robotics &amp; ROS</div><div class="sc-tags"><span class="st">ROS</span><span class="st">ROS2</span><span class="st">MoveIt</span><span class="st">Gazebo</span><span class="st">SLAM</span><span class="st">OMPL</span><span class="st">OpenCV</span><span class="st">PCL</span><span class="st">Nav2</span><span class="st">RVIZ</span><span class="st">LiDAR</span><span class="st">IMU</span><span class="st">RADAR</span></div></div>
+      <div class="sc"><div class="sc-ic">💻</div><div class="sc-t">Programming</div><div class="sc-tags"><span class="st">Python</span><span class="st">C++</span><span class="st">C</span><span class="st">MATLAB</span><span class="st">CAPL</span><span class="st">Bash</span></div></div>
+      <div class="sc"><div class="sc-ic">🚗</div><div class="sc-t">Automotive</div><div class="sc-tags"><span class="st">CANoe</span><span class="st">VTest Studio</span><span class="st">HIL Testing</span><span class="st">UDS Protocol</span><span class="st">LIN Bus</span><span class="st">CAN Bus</span><span class="st">BDD</span><span class="st">JIRA</span><span class="st">TestRail</span></div></div>
+      <div class="sc"><div class="sc-ic">⚙️</div><div class="sc-t">Embedded</div><div class="sc-tags"><span class="st">ARM</span><span class="st">Arduino</span><span class="st">8051</span><span class="st">AVR</span><span class="st">Keil µVision</span><span class="st">IAR Workbench</span><span class="st">Proteus</span><span class="st">SolidWorks</span></div></div>
     </div>
   </div>
 </div>
 
 <!-- PROJECTS -->
-<div class="panel" id="p-projects">
-  <div class="panel-inner">
-    <div class="sec-ovl rv">What I've Built</div>
-    <h2 class="sec-h rv d1">Featured <em>Projects</em></h2>
-    <div class="proj-grid rv d2">
-      <div class="proj-card" onclick="openModal('PET Robot','Robotics · Simulation','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/PET%20Robot%20(Furtual).JPEG','Home pet monitoring robot using ROS2 Humble. RTAB-Map is utilized for navigation, localization, and mapping. The system performs autonomous navigation within a home environment.','C++,Python,ROS2,RTAB-Map,Gazebo')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/PET%20Robot%20(Furtual).JPEG" alt="PET Robot" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">Robotics · Simulation</div><div class="proj-card-title">PET Robot — Home Monitoring</div><div class="proj-card-tags"><span class="proj-card-tag">ROS2</span><span class="proj-card-tag">RTAB-Map</span><span class="proj-card-tag">Gazebo</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('Over-Head Board Module','Automotive · Alpine','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/OHC.jpg','The automotive project module controls interior lighting, hazard lights, seat belt reminders, humidity sensing, rain and light sensing, passenger airbag enable/disable, vanity lighting, and the rear-view mirror.','CANoe,CAPL,HIL,LIN,UDS,VTest Studio')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/OHC.jpg" alt="OHC Alpine" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">Automotive · Alpine</div><div class="proj-card-title">Over-Head Board Module</div><div class="proj-card-tags"><span class="proj-card-tag">CANoe</span><span class="proj-card-tag">HIL</span><span class="proj-card-tag">CAPL</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('Robo Taxi','Autonomous · Tata Elxsi','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Nano.jpg','Self-driving car development project. ADAS/embedded interns engaged in sensor fusion, sensor interfacing, calibration, and testing. Vehicle simulation using ROS2 Humble for navigation, localization, and mapping.','ROS2,C++,LiDAR,SLAM,Sensor Fusion,MoveIt')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Nano.jpg" alt="Robo Taxi" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">Autonomous · Tata Elxsi</div><div class="proj-card-title">Robo Taxi — Level 3 AV</div><div class="proj-card-tags"><span class="proj-card-tag">ROS2</span><span class="proj-card-tag">SLAM</span><span class="proj-card-tag">LiDAR</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('Infotainment CCS','IVI · Forvia France','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Forvia.JPG','Infotainment system validation for global OEM via Forvia France. Performed both system validation and software validation of the IVI module using BDD Python scripts and TestRail.','Python,BDD,Linux,Android,JIRA,TestRail')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Forvia.JPG" alt="Forvia IVI" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">IVI · Forvia France</div><div class="proj-card-title">Infotainment CCS</div><div class="proj-card-tags"><span class="proj-card-tag">Python</span><span class="proj-card-tag">BDD</span><span class="proj-card-tag">Android</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('Wipod','Autonomous · Wipro','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/WIPOD.jpg','Self-driving car for people transport within Wipro Bangalore campus. Handled system design, bare-metal programming for motor driver modules, simulation, and on-field testing.','ROS1 Noetic,C++,Bare-Metal,LiDAR,SLAM')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/WIPOD.jpg" alt="Wipod" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">Autonomous · Wipro</div><div class="proj-card-title">Wipod — Campus Self-Driving Car</div><div class="proj-card-tags"><span class="proj-card-tag">ROS1</span><span class="proj-card-tag">Bare-Metal</span><span class="proj-card-tag">SLAM</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('Reverse View Camera','ADAS · Valeo','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/RVC.png','Offline overlay rendering pipeline for four camera views — rear, panorama, trailer, and PDC — on a Broadcom ARM-7 + Pixel Processor SoC. Overlays encoded in binary RLE format into BEGU files.','C,C++,ARM-7,Pixel Processor,RLE,BEGU')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/RVC.png" alt="RVC" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">ADAS · Valeo</div><div class="proj-card-title">Reverse View Camera</div><div class="proj-card-tags"><span class="proj-card-tag">ARM-7</span><span class="proj-card-tag">C++</span><span class="proj-card-tag">RLE</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('High Payload Path Planning','Robotics · Toshiba','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/High%20Payload%20Robot%20Arm.JPG','Optimize the trajectory of the Toshiba Robot Arm with a vacuum gripper to carry heavy loads without losing grip. Gripping force calculation for each type of object integrated into the OMPL Planner.','C++,ROS,MoveIt,OMPL,URDF,SolidWorks')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/High%20Payload%20Robot%20Arm.JPG" alt="High Payload Robot" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">Robotics · Toshiba</div><div class="proj-card-title">High Payload Path Planning</div><div class="proj-card-tags"><span class="proj-card-tag">MoveIt</span><span class="proj-card-tag">OMPL</span><span class="proj-card-tag">ROS</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('ARM NEON Optimization','Embedded · SIMD','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/ARM%20Optimization%20for%20Automotive%20Modules.jpg','Optimizing computational performance using ARM NEON SIMD instructions. Vectorizing algorithms to reduce execution time and improve overall system efficiency on ARM-based automotive platforms.','C,C++,ARM NEON,SIMD,Optimization')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/ARM%20Optimization%20for%20Automotive%20Modules.jpg" alt="ARM Optimization" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">Embedded · SIMD</div><div class="proj-card-title">ARM NEON Optimization</div><div class="proj-card-tags"><span class="proj-card-tag">ARM NEON</span><span class="proj-card-tag">SIMD</span><span class="proj-card-tag">C++</span></div></div>
-      </div>
-      <div class="proj-card" onclick="openModal('Educational Bots','Robotics · Education','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Educational%20Bots.png','Built robotic arms, drones, and mobile robots for academic use. Conducted workshops on Arduino, 8051, Proteus, MATLAB, Novabot, and LEGO Mindstorms for engineering students.','Arduino,8051,MATLAB,Proteus,LEGO,Drones')">
-        <div class="proj-card-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Educational%20Bots.png" alt="Educational Bots" loading="lazy"><div class="proj-card-img-overlay"></div></div>
-        <div class="proj-card-body"><div class="proj-card-cat">Robotics · Education</div><div class="proj-card-title">Educational Bots Platform</div><div class="proj-card-tags"><span class="proj-card-tag">Arduino</span><span class="proj-card-tag">LEGO</span><span class="proj-card-tag">Drones</span></div></div>
-      </div>
+<div class="panel" id="p3">
+  <div class="wrap">
+    <div class="ovl fade-up">What I've Built</div>
+    <h2 class="sh fade-up" style="transition-delay:.1s">Featured <em>Projects</em></h2>
+    <div class="pg-grid fade-up" style="transition-delay:.15s">
+      <div class="pc" onclick="om('PET Robot','Robotics · Simulation','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/PET%20Robot%20(Furtual).JPEG','Home pet monitoring robot using ROS2 Humble. RTAB-Map provides navigation, localization, and mapping across the home environment autonomously.','C++,Python,ROS2,RTAB-Map,Gazebo')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/PET%20Robot%20(Furtual).JPEG" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">Robotics · Simulation</div><div class="pc-t">PET Robot — Home Monitoring</div><div class="pc-tags"><span class="pc-tag">ROS2</span><span class="pc-tag">RTAB-Map</span><span class="pc-tag">Gazebo</span></div></div></div>
+      <div class="pc" onclick="om('Over-Head Board Module','Automotive · Alpine','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/OHC.jpg','Controls interior lighting, hazard lights, seat belt reminders, humidity sensing, passenger airbag enable/disable, vanity lighting, and rear-view mirror. Full system validation for Alpine.','CANoe,CAPL,HIL,LIN,UDS,VTest Studio')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/OHC.jpg" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">Automotive · Alpine</div><div class="pc-t">Over-Head Board Module</div><div class="pc-tags"><span class="pc-tag">CANoe</span><span class="pc-tag">HIL</span><span class="pc-tag">CAPL</span></div></div></div>
+      <div class="pc" onclick="om('Robo Taxi','Autonomous · Tata Elxsi','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Nano.jpg','Self-driving car development. ADAS/embedded interns engaged in sensor fusion, sensor interfacing, calibration, and testing. ROS2 Humble for navigation, localization, and mapping.','ROS2,C++,LiDAR,SLAM,Sensor Fusion,MoveIt')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Nano.jpg" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">Autonomous · Tata Elxsi</div><div class="pc-t">Robo Taxi — Level 3 AV</div><div class="pc-tags"><span class="pc-tag">ROS2</span><span class="pc-tag">SLAM</span><span class="pc-tag">LiDAR</span></div></div></div>
+      <div class="pc" onclick="om('Infotainment CCS','IVI · Forvia France','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Forvia.JPG','Infotainment system validation for global OEM via Forvia France. System and software validation using BDD Python scripts, JIRA tracking, and TestRail reporting.','Python,BDD,Linux,Android,JIRA,TestRail')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Forvia.JPG" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">IVI · Forvia France</div><div class="pc-t">Infotainment CCS</div><div class="pc-tags"><span class="pc-tag">Python</span><span class="pc-tag">BDD</span><span class="pc-tag">Android</span></div></div></div>
+      <div class="pc" onclick="om('Wipod','Autonomous · Wipro','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/WIPOD.jpg','Self-driving car for people transport within Wipro Bangalore campus. System design, bare-metal programming for motor driver modules, simulation, and on-field testing.','ROS1 Noetic,C++,Bare-Metal,LiDAR,SLAM')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/WIPOD.jpg" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">Autonomous · Wipro</div><div class="pc-t">Wipod — Campus Self-Driving Car</div><div class="pc-tags"><span class="pc-tag">ROS1</span><span class="pc-tag">Bare-Metal</span><span class="pc-tag">SLAM</span></div></div></div>
+      <div class="pc" onclick="om('Reverse View Camera','ADAS · Valeo','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/RVC.png','Offline overlay rendering pipeline for rear, panorama, trailer, and PDC camera views on Broadcom ARM-7 + Pixel Processor SoC. Overlays encoded in binary RLE format into BEGU files.','C,C++,ARM-7,Pixel Processor,RLE,BEGU')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/RVC.png" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">ADAS · Valeo</div><div class="pc-t">Reverse View Camera</div><div class="pc-tags"><span class="pc-tag">ARM-7</span><span class="pc-tag">C++</span><span class="pc-tag">RLE/BEGU</span></div></div></div>
+      <div class="pc" onclick="om('High Payload Path Planning','Robotics · Toshiba','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/High%20Payload%20Robot%20Arm.JPG','Optimise trajectory of Toshiba Robot Arm with vacuum gripper for heavy loads. Gripping force calculation per object type integrated into OMPL Planner. Designed in CAD, converted to URDF, simulated in RVIZ/Gazebo.','C++,ROS,MoveIt,OMPL,URDF,SolidWorks')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/High%20Payload%20Robot%20Arm.JPG" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">Robotics · Toshiba</div><div class="pc-t">High Payload Path Planning</div><div class="pc-tags"><span class="pc-tag">MoveIt</span><span class="pc-tag">OMPL</span><span class="pc-tag">ROS</span></div></div></div>
+      <div class="pc" onclick="om('ARM NEON Optimization','Embedded · SIMD','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/ARM%20Optimization%20for%20Automotive%20Modules.jpg','Optimizing computational performance using ARM NEON SIMD instructions. Vectorizing algorithms to accelerate data-intensive automotive operations, reducing execution time significantly.','C,C++,ARM NEON,SIMD,Optimization,Embedded')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/ARM%20Optimization%20for%20Automotive%20Modules.jpg" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">Embedded · SIMD</div><div class="pc-t">ARM NEON Optimization</div><div class="pc-tags"><span class="pc-tag">ARM NEON</span><span class="pc-tag">SIMD</span><span class="pc-tag">C++</span></div></div></div>
+      <div class="pc" onclick="om('Educational Bots','Robotics · Education','https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Educational%20Bots.png','Built robotic arms, drones, and mobile robots for academic use. Conducted workshops on Arduino, 8051, Proteus, MATLAB, Novabot, and LEGO Mindstorms for engineering students.','Arduino,8051,MATLAB,Proteus,LEGO,Drones')"><div class="pc-img"><img src="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/images/Educational%20Bots.png" alt="" loading="lazy"><div class="pc-ov"></div></div><div class="pc-b"><div class="pc-cat">Robotics · Education</div><div class="pc-t">Educational Bots Platform</div><div class="pc-tags"><span class="pc-tag">Arduino</span><span class="pc-tag">LEGO</span><span class="pc-tag">Drones</span></div></div></div>
     </div>
   </div>
 </div>
 
 <!-- JOURNEY -->
-<div class="panel" id="p-journey">
-  <div class="panel-inner">
-    <div class="sec-ovl rv">Career Timeline</div>
-    <h2 class="sec-h rv d1">My <em>Journey</em></h2>
-    <div class="tl rv d2">
+<div class="panel" id="p4">
+  <div class="wrap">
+    <div class="ovl fade-up">Career Timeline</div>
+    <h2 class="sh fade-up" style="transition-delay:.1s">My <em>Journey</em></h2>
+    <div class="tl fade-up" style="transition-delay:.15s">
       <div class="tl-line"></div>
-      <div class="tl-item">
-        <div class="tl-dot"></div>
-        <div class="tl-yr">Academic Foundation</div>
-        <div class="tl-ttl">M.Tech Robotics — SRM University (GPA 8.73)</div>
-        <span class="tl-chp cy-chp">Education</span>
-      </div>
-      <div class="tl-item">
-        <div class="tl-dot"></div>
-        <div class="tl-yr">Automotive</div>
-        <div class="tl-ttl">Systems Engineer — Over-Head Board Module, Infotainment CCS, BYD Project &amp; ARM Optimization</div>
-        <span class="tl-chp gr-chp">Industry</span>
-      </div>
-      <div class="tl-item">
-        <div class="tl-dot"></div>
-        <div class="tl-yr">ADAS</div>
-        <div class="tl-ttl">Autonomous Systems Engineer — UCAP, Reverse View Camera (Valeo)</div>
-        <span class="tl-chp gr-chp">Industry</span>
-      </div>
-      <div class="tl-item">
-        <div class="tl-dot"></div>
-        <div class="tl-yr">Robotics</div>
-        <div class="tl-ttl">Robotics Engineer — Pet Robot, Robo Taxi, Wipod, High Payload Path Planning &amp; Educational Bots</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="tl-chp cy-chp">Education</span><span class="tl-chp or-chp">Industry</span></div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-dot"></div>
-        <div class="tl-yr">Recent</div>
-        <div class="tl-ttl">Automation Testing Lead — Alpine OHC &amp; Forvia IVI</div>
-        <div style="display:flex;gap:8px;margin-top:8px"><span class="tl-chp cy-chp">Testing Lead</span><span class="tl-chp gr-chp">Industry</span></div>
-      </div>
-      <div class="tl-item" style="margin-bottom:0">
-        <div class="tl-dot"></div>
-        <div class="tl-yr">Current</div>
-        <div class="tl-ttl">Robotics Development &amp; Validation Engineer — Pet Robot Development in ROS2</div>
-        <div style="display:flex;gap:8px;margin-top:8px"><span class="tl-chp or-chp">Autonomous</span><span class="tl-chp gr-chp">Freelance</span></div>
-      </div>
+      <div class="tli"><div class="tl-dot"></div><div class="tl-yr">Academic Foundation</div><div class="tl-ttl">M.Tech Robotics — SRM University (GPA 8.73)</div><span class="tchip tc">Education</span></div>
+      <div class="tli"><div class="tl-dot"></div><div class="tl-yr">Automotive</div><div class="tl-ttl">Systems Engineer — OHC Module, Infotainment CCS, BYD Project &amp; ARM Optimization</div><span class="tchip tg">Industry</span></div>
+      <div class="tli"><div class="tl-dot"></div><div class="tl-yr">ADAS</div><div class="tl-ttl">Autonomous Systems Engineer — UCAP, Reverse View Camera (Valeo)</div><span class="tchip tg">Industry</span></div>
+      <div class="tli"><div class="tl-dot"></div><div class="tl-yr">Robotics</div><div class="tl-ttl">Robotics Engineer — Pet Robot, Robo Taxi, Wipod, High Payload Path Planning &amp; Educational Bots</div><span class="tchip tc">Education</span><span class="tchip to">Industry</span></div>
+      <div class="tli"><div class="tl-dot"></div><div class="tl-yr">Recent</div><div class="tl-ttl">Automation Testing Lead — Alpine OHC &amp; Forvia IVI</div><span class="tchip tc">Testing Lead</span><span class="tchip tg">Industry</span></div>
+      <div class="tli" style="margin-bottom:0"><div class="tl-dot"></div><div class="tl-yr">Current</div><div class="tl-ttl">Robotics Development &amp; Validation Engineer — Pet Robot in ROS2</div><span class="tchip to">Autonomous</span><span class="tchip tg">Freelance</span></div>
     </div>
   </div>
 </div>
 
 <!-- COURSES -->
-<div class="panel" id="p-courses">
-  <div class="panel-inner">
-    <div class="sec-ovl rv">Continuous Learning</div>
-    <h2 class="sec-h rv d1">Always <em>Evolving</em></h2>
-    <p style="color:var(--muted);font-size:14px" class="rv d2">15+ industry courses in ROS, ROS2, autonomous systems, and modern C++.</p>
-    <div class="crs-grid rv d3">
-      <div class="crs-card">
-        <div class="crs-ic">🔬</div>
-        <div class="crs-title">ROS 1 Mastery</div>
-        <ul class="crs-list">
-          <li>ROS Basics, Motion &amp; OpenCV</li>
-          <li>Localization, Navigation &amp; SLAM</li>
-          <li>Navigation Stack for Custom Robots</li>
-          <li>Robot Arms &amp; Panda 7 DOF</li>
-          <li>Self Driving &amp; ROS — Odometry</li>
-          <li>Robotics and ROS — Manipulators</li>
-        </ul>
-      </div>
-      <div class="crs-card">
-        <div class="crs-ic">🚀</div>
-        <div class="crs-title">ROS 2 Expert</div>
-        <ul class="crs-list">
-          <li>ROS2 For Beginners (Foxy, Humble)</li>
-          <li>ROS2 Nav2 Navigation Stack with SLAM</li>
-          <li>Robotics and ROS2 — Manipulators</li>
-          <li>ROS2 Point Clouds with PCL</li>
-          <li>Self Driving &amp; ROS2 — Localization</li>
-          <li>Self Driving &amp; ROS2 — Odometry</li>
-        </ul>
-      </div>
-      <div class="crs-card">
-        <div class="crs-ic">⚡</div>
-        <div class="crs-title">C++ &amp; Systems</div>
-        <ul class="crs-list">
-          <li>C++ Programming — Beginner to Advance</li>
-          <li>Complete Modern C++ (C++11/14/17)</li>
-          <li>Deep Dive in C++ — Advanced Topics</li>
-        </ul>
-      </div>
+<div class="panel" id="p5">
+  <div class="wrap">
+    <div class="ovl fade-up">Continuous Learning</div>
+    <h2 class="sh fade-up" style="transition-delay:.1s">Always <em>Evolving</em></h2>
+    <p style="color:var(--muted);font-size:12px" class="fade-up" style="transition-delay:.15s">15+ industry courses in ROS, ROS2, autonomous systems, and modern C++.</p>
+    <div class="cg fade-up" style="transition-delay:.2s">
+      <div class="cc"><div class="cc-ic">🔬</div><div class="cc-t">ROS 1 Mastery</div><ul class="cc-list"><li>ROS Basics, Motion &amp; OpenCV</li><li>Localization, Navigation &amp; SLAM</li><li>Navigation Stack for Custom Robots</li><li>Robot Arms &amp; Panda 7 DOF</li><li>Self Driving &amp; ROS — Odometry</li><li>Robotics and ROS — Manipulators</li></ul></div>
+      <div class="cc"><div class="cc-ic">🚀</div><div class="cc-t">ROS 2 Expert</div><ul class="cc-list"><li>ROS2 For Beginners (Foxy, Humble)</li><li>ROS2 Nav2 Navigation Stack with SLAM</li><li>Robotics and ROS2 — Manipulators</li><li>ROS2 Point Clouds with PCL</li><li>Self Driving &amp; ROS2 — Localization</li><li>Self Driving &amp; ROS2 — Odometry</li></ul></div>
+      <div class="cc"><div class="cc-ic">⚡</div><div class="cc-t">C++ &amp; Systems</div><ul class="cc-list"><li>C++ Programming — Beginner to Advance</li><li>Complete Modern C++ (C++11/14/17)</li><li>Deep Dive in C++ — Advanced Topics</li></ul></div>
     </div>
   </div>
 </div>
 
 <!-- CONTACT -->
-<div class="panel" id="p-contact">
-  <div class="panel-inner">
-    <div class="sec-ovl rv">Let's Connect</div>
-    <h2 class="sec-h rv d1">Get In <em>Touch</em></h2>
-    <div class="contact-grid rv d2">
-      <div>
-        <div class="c-info-ttl">Let's build something incredible</div>
-        <div class="c-info-sub">Open to full-time roles, freelance projects, and consulting in robotics, autonomous systems, and automotive testing across India, UAE, and globally.</div>
-        <div class="c-links">
-          <a class="c-link" href="mailto:Nitz.719@gmail.com">
-            <div class="c-link-ic">📧</div>
-            <div><div class="c-link-lab">EMAIL</div><div class="c-link-val">Nitz.719@gmail.com</div></div>
-          </a>
-          <a class="c-link" href="tel:+918197678200">
-            <div class="c-link-ic">📱</div>
-            <div><div class="c-link-lab">INDIA</div><div class="c-link-val" style="color:var(--text)">+91 8197678200</div></div>
-          </a>
-          <a class="c-link" href="tel:+971504375954">
-            <div class="c-link-ic">🌍</div>
-            <div><div class="c-link-lab">UAE</div><div class="c-link-val" style="color:var(--text)">+971 504375954</div></div>
-          </a>
-          <a class="c-link" href="https://linkedin.com/in/nithin-rajan-574072101/" target="_blank" rel="noopener noreferrer">
-            <div class="c-link-ic">💼</div>
-            <div><div class="c-link-lab">LINKEDIN</div><div class="c-link-val">nithin-rajan-574072101 ↗</div></div>
-          </a>
-        </div>
+<div class="panel" id="p6">
+  <div class="wrap">
+    <div>
+      <div class="ovl fade-up">Let's Connect</div>
+      <h2 class="sh fade-up" style="transition-delay:.1s">Get In <em>Touch</em></h2>
+      <div class="ci-t fade-up" style="transition-delay:.15s">Let's build something incredible</div>
+      <div class="ci-s fade-up" style="transition-delay:.2s">Open to roles, freelance, and consulting in robotics, autonomous systems, and automotive testing across India, UAE, and globally.</div>
+      <div class="clinks fade-up" style="transition-delay:.25s">
+        <a class="clnk" href="mailto:Nitz.719@gmail.com"><div class="cl-ic">📧</div><div><div class="cl-lab">EMAIL</div><div class="cl-val">Nitz.719@gmail.com</div></div></a>
+        <a class="clnk" href="tel:+918197678200"><div class="cl-ic">📱</div><div><div class="cl-lab">INDIA</div><div class="cl-val" style="color:var(--text)">+91 8197678200</div></div></a>
+        <a class="clnk" href="tel:+971504375954"><div class="cl-ic">🌍</div><div><div class="cl-lab">UAE</div><div class="cl-val" style="color:var(--text)">+971 504375954</div></div></a>
+        <a class="clnk" href="https://linkedin.com/in/nithin-rajan-574072101/" target="_blank"><div class="cl-ic">💼</div><div><div class="cl-lab">LINKEDIN</div><div class="cl-val">nithin-rajan-574072101 ↗</div></div></a>
       </div>
-      <div class="c-form">
-        <div class="cf-row">
-          <div><label class="cf-lab">NAME</label><input class="cf-in" id="cfn" type="text" placeholder="Your name"></div>
-          <div><label class="cf-lab">EMAIL</label><input class="cf-in" id="cfe" type="email" placeholder="your@email.com"></div>
-        </div>
-        <div><label class="cf-lab">SUBJECT</label><input class="cf-in" id="cfs" type="text" placeholder="What's this about?"></div>
-        <div><label class="cf-lab">MESSAGE</label><textarea class="cf-in" id="cfm" rows="4" placeholder="Tell me about your project..."></textarea></div>
-        <button class="cf-sub" onclick="submitForm()"><span id="cf-txt">Send Message →</span></button>
-        <div id="cf-stat" style="display:none;font-family:'Space Mono',monospace;font-size:10px;padding:12px;border-radius:2px;margin-top:4px"></div>
-      </div>
+    </div>
+    <div class="cform fade-up" style="transition-delay:.3s">
+      <div class="cfr"><div><label class="flb">Name</label><input class="fin" id="fn" type="text" placeholder="Your name"></div><div><label class="flb">Email</label><input class="fin" id="fe" type="email" placeholder="your@email.com"></div></div>
+      <div><label class="flb">Subject</label><input class="fin" id="fs" type="text" placeholder="What's this about?"></div>
+      <div><label class="flb">Message</label><textarea class="fin" id="fm" rows="4" placeholder="Tell me about your project..."></textarea></div>
+      <button class="fsub" onclick="sf()"><span id="fbt">Send Message →</span></button>
+      <div id="fst" style="display:none;font-family:Space Mono,monospace;font-size:9px;padding:10px;border-radius:2px;margin-top:4px"></div>
     </div>
   </div>
 </div>
 
 <!-- MODAL -->
-<div class="modal-ov" id="modal-ov">
-  <div class="modal-bx">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-cat" id="m-cat"></div>
-    <div class="modal-title" id="m-title"></div>
-    <img class="modal-img" id="m-img" alt="">
-    <div class="modal-desc" id="m-desc"></div>
-    <div class="modal-tags" id="m-tags"></div>
-  </div>
-</div>
+<div class="mov" id="mov"><div class="mbx"><button class="mcl" onclick="cm()">✕</button><div class="mcat" id="mc"></div><div class="mtitle" id="mt"></div><img class="mimg" id="mi" alt=""><div class="mdesc" id="md"></div><div class="mtags" id="mtg"></div></div></div>
 
-<!-- FOOTER IN CONTACT -->
-<footer style="position:fixed;bottom:0;left:0;right:0;z-index:250;padding:14px 40px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bd);background:rgba(2,2,10,0.7);backdrop-filter:blur(20px);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);opacity:0;transition:opacity .5s;pointer-events:none" id="footer">
-  <span style="color:var(--cy);font-family:'Syne',sans-serif;font-weight:800;font-size:16px">NR.</span>
+<!-- FOOTER -->
+<footer id="ft">
+  <span class="logo">NR.</span>
   <span>© 2026 Nithin Rajan — Engineered with precision.</span>
-  <div style="display:flex;gap:18px">
-    <a href="https://linkedin.com/in/nithin-rajan-574072101/" target="_blank" style="color:var(--muted);text-decoration:none;pointer-events:auto;transition:color .2s" onmouseover="this.style.color='var(--cy)'" onmouseout="this.style.color='var(--muted)'">LinkedIn ↗</a>
-    <a href="mailto:Nitz.719@gmail.com" style="color:var(--muted);text-decoration:none;pointer-events:auto;transition:color .2s" onmouseover="this.style.color='var(--cy)'" onmouseout="this.style.color='var(--muted)'">Email</a>
-  </div>
+  <div style="display:flex;gap:16px"><a href="https://linkedin.com/in/nithin-rajan-574072101/" target="_blank">LinkedIn ↗</a><a href="mailto:Nitz.719@gmail.com">Email</a><a href="https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/Nithin_Rajan_Resume.pdf" download>Resume</a></div>
 </footer>
 
 <script>
 'use strict';
 
-// ═══ CURSOR ═══
-const cur = document.getElementById('cur');
-const curRing = document.getElementById('cur-ring');
-let mx=window.innerWidth/2, my=window.innerHeight/2, rx=mx, ry=my;
+// ═══════════════════════════════════════════════════
+// CINEMATIC WebGL — Custom GLSL Shaders
+// Full-screen fragment shader: galaxy, nebula, volumetrics
+// ═══════════════════════════════════════════════════
+
+const canvas = document.getElementById('bg');
+const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  if(gl) gl.viewport(0,0,canvas.width,canvas.height);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── VERTEX SHADER ──
+const VS = `
+attribute vec2 a_pos;
+void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
+
+// ── FRAGMENT SHADER — Cinematic Galaxy + Nebula + Wormhole ──
+const FS = `
+precision highp float;
+uniform float u_time;
+uniform vec2 u_res;
+uniform vec2 u_mouse;
+uniform float u_sec;
+
+#define PI 3.14159265359
+#define TAU 6.28318530718
+
+// ── Hash functions ──
+float hash(float n){ return fract(sin(n)*43758.5453123); }
+float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+vec2 hash2(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453123); }
+
+// ── Noise ──
+float noise(vec2 p){
+  vec2 i=floor(p); vec2 f=fract(p);
+  vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i+vec2(0,0)),hash(i+vec2(1,0)),u.x),
+             mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);
+}
+
+float fbm(vec2 p){
+  float v=0.0,a=0.5;
+  for(int i=0;i<6;i++){v+=a*noise(p);p*=2.01;p+=vec2(1.7,9.2);a*=0.5;}
+  return v;
+}
+
+// ── Volumetric God Rays ──
+float godRay(vec2 uv, vec2 src, float t){
+  vec2 d=uv-src;
+  float a=atan(d.y,d.x);
+  float r=length(d);
+  float ray=0.0;
+  for(int i=0;i<8;i++){
+    float fi=float(i);
+    float angle=a+fi*0.785+t*0.3;
+    float w=sin(angle*3.0+t)*0.5+0.5;
+    ray+=w*exp(-r*(12.0+fi*3.0));
+  }
+  return ray*0.18;
+}
+
+// ── Stars (multi-layer with twinkle) ──
+float stars(vec2 uv, float scale, float t){
+  vec2 g=floor(uv*scale);
+  vec2 f=fract(uv*scale);
+  float bright=0.0;
+  for(int y=-1;y<=1;y++){
+    for(int x=-1;x<=1;x++){
+      vec2 n=g+vec2(x,y);
+      vec2 r=hash2(n);
+      vec2 pos=vec2(x,y)+r-f;
+      float d=length(pos);
+      float size=0.002+r.x*0.004;
+      float twinkle=0.7+0.3*sin(t*3.0+r.x*TAU);
+      bright+=smoothstep(size,0.0,d)*twinkle*r.y;
+    }
+  }
+  return bright;
+}
+
+// ── Wormhole/Black Hole ──
+vec3 blackHole(vec2 uv, float t){
+  float r=length(uv);
+  float a=atan(uv.y,uv.x);
+  
+  // Gravitational lensing
+  float lens=0.04/(r*r+0.001);
+  vec2 bent=uv+normalize(uv)*(-lens);
+  
+  // Accretion disk
+  float diskR=smoothstep(0.12,0.14,r)*smoothstep(0.28,0.22,r);
+  float diskSwirl=fbm(bent*4.0+vec2(t*0.2,0))*diskR;
+  
+  // Event horizon glow
+  float horizon=exp(-r*18.0);
+  
+  // Disk color: hot orange/white core, cooler orange/red edge
+  vec3 diskColor=mix(vec3(1.0,0.6,0.1),vec3(1.0,0.3,0.05),smoothstep(0.12,0.28,r));
+  diskColor*=diskSwirl*3.0;
+  
+  // Blue-shift on one side (Doppler)
+  float doppler=sin(a+t*0.1)*0.5+0.5;
+  diskColor=mix(diskColor,diskColor*vec3(0.4,0.7,1.2),doppler*diskR*0.5);
+  
+  vec3 glow=vec3(0.15,0.35,0.6)*horizon*4.0;
+  
+  return diskColor+glow;
+}
+
+// ── Nebula cloud ──
+vec3 nebula(vec2 uv, float t){
+  float n1=fbm(uv*1.8+vec2(t*0.012,t*0.008));
+  float n2=fbm(uv*2.4+vec2(-t*0.009,t*0.011)+5.2);
+  float n3=fbm(uv*3.6+vec2(t*0.007,-t*0.014)+11.1);
+  
+  vec3 c1=vec3(0.05,0.15,0.45)*n1*1.8; // deep blue
+  vec3 c2=vec3(0.35,0.08,0.6)*n2*1.4;  // purple
+  vec3 c3=vec3(0.0,0.4,0.7)*n3*1.2;    // cyan
+  
+  float mask=smoothstep(0.25,0.65,n1)*smoothstep(0.3,0.7,n2);
+  return (c1+c2+c3)*mask*0.6;
+}
+
+// ── Section-based color tinting ──
+vec3 secTint(float s){
+  if(s<0.5) return vec3(0.0,0.83,1.0);         // cyan — hero
+  if(s<1.5) return vec3(0.3,0.0,0.8);          // purple — about
+  if(s<2.5) return vec3(0.0,1.0,0.55);         // green — skills
+  if(s<3.5) return vec3(1.0,0.33,0.0);         // orange — projects
+  if(s<4.5) return vec3(1.0,0.84,0.04);        // gold — journey
+  if(s<5.5) return vec3(0.75,0.34,0.95);       // purple2 — courses
+  return vec3(0.0,0.83,1.0);                   // cyan — contact
+}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy-u_res*0.5)/min(u_res.x,u_res.y);
+  vec2 rawUV=gl_FragCoord.xy/u_res;
+  float t=u_time;
+  float sec=u_sec;
+  
+  vec3 color=vec3(0.0);
+  
+  // ── Deep space background ──
+  color+=vec3(0.002,0.003,0.012);
+  
+  // ── Multi-scale star fields ──
+  float s1=stars(rawUV,80.0,t);
+  float s2=stars(rawUV,200.0,t*1.3);
+  float s3=stars(rawUV,450.0,t*0.7);
+  vec3 starColor=vec3(0.7,0.8,1.0)*s1+vec3(0.9,0.85,0.75)*s2+vec3(1.0,0.95,0.9)*s3;
+  color+=starColor;
+  
+  // ── Milky Way band ──
+  float bandY=uv.y+fbm(vec2(uv.x*0.8+t*0.01,t*0.003))*0.3;
+  float band=exp(-bandY*bandY*8.0);
+  float mw=fbm(vec2(uv.x*3.0+t*0.008,uv.y*6.0))*band;
+  color+=vec3(0.08,0.12,0.28)*mw*1.2;
+  
+  // ── Nebula ──
+  vec3 neb=nebula(uv+vec2(t*0.005,-t*0.003), t);
+  color+=neb;
+  
+  // ── Black hole (visible in hero/about) ──
+  float bhStrength=1.0-smoothstep(0.0,2.0,sec);
+  if(bhStrength>0.01){
+    vec2 bhCenter=uv-vec2(0.35,0.15);
+    vec3 bh=blackHole(bhCenter*2.0, t);
+    color+=bh*bhStrength;
+    float godRayVal=godRay(uv, vec2(0.5+0.35,0.5+0.15), t);
+    color+=vec3(0.1,0.25,0.6)*godRayVal*bhStrength;
+  }
+  
+  // ── Wormhole tunnel (projects section) ──
+  float wormStr=smoothstep(2.5,3.0,sec)-smoothstep(3.5,4.0,sec);
+  if(wormStr>0.01){
+    float r=length(uv*vec2(1.0,1.2));
+    float angle=atan(uv.y,uv.x);
+    float warp=fbm(vec2(r*4.0-t*2.0,angle*2.0))*0.5+0.5;
+    float ring=sin(r*20.0-t*4.0)*0.5+0.5;
+    ring*=exp(-r*3.0);
+    color+=vec3(0.0,0.6,1.0)*ring*warp*wormStr*1.5;
+    float core=exp(-r*r*12.0);
+    color+=vec3(0.2,0.8,1.0)*core*wormStr;
+  }
+  
+  // ── Section tint ──
+  vec3 tint=secTint(sec);
+  float tintStr=0.04+0.02*sin(t*0.5);
+  color+=tint*tintStr;
+  
+  // ── Lens flare streaks from bright star ──
+  vec2 starPos=vec2(0.28,0.18);
+  float starDist=length(uv-starPos);
+  float flare=exp(-starDist*starDist*60.0);
+  // streak
+  vec2 d=uv-starPos;
+  float streak=exp(-abs(d.y)*80.0)*exp(-length(d)*8.0)*0.5;
+  float streak2=exp(-abs(d.x)*80.0)*exp(-length(d)*8.0)*0.35;
+  color+=vec3(0.6,0.85,1.0)*flare*1.2;
+  color+=vec3(0.4,0.7,1.0)*(streak+streak2)*0.4;
+  
+  // ── Aurora/volumetric curtain (journey/courses section) ──
+  float auroraStr=smoothstep(3.5,4.0,sec)-smoothstep(5.5,6.0,sec);
+  if(auroraStr>0.01){
+    float wave=sin(uv.x*4.0+t*0.6+fbm(uv*2.0+t*0.1)*2.0)*0.5+0.5;
+    float curtain=exp(-(uv.y+0.5+wave*0.3)*(uv.y+0.5+wave*0.3)*6.0);
+    vec3 auroraColor=mix(vec3(0.0,1.0,0.4),vec3(0.5,0.0,1.0),wave);
+    color+=auroraColor*curtain*auroraStr*0.5;
+  }
+  
+  // ── Mouse parallax glow ──
+  vec2 mp=(u_mouse/u_res-0.5)*2.0;
+  vec2 mUV=uv-mp*0.08;
+  float mouseGlow=exp(-dot(mUV,mUV)*5.0)*0.06;
+  color+=tint*mouseGlow;
+  
+  // ── Vignette ──
+  float vig=1.0-smoothstep(0.5,1.4,length(rawUV-0.5)*1.8);
+  color*=vig*1.15;
+  
+  // ── Tone mapping (cinematic ACES) ──
+  color=color*(2.51*color+0.03)/(color*(2.43*color+0.59)+0.14);
+  
+  // ── Subtle color grade — cinematic blue shadows ──
+  float luma=dot(color,vec3(0.299,0.587,0.114));
+  color=mix(color,color*vec3(0.75,0.85,1.1),smoothstep(0.4,0.0,luma)*0.35);
+  
+  gl_FragColor=vec4(color,1.0);
+}
+`;
+
+// ── Compile shader ──
+function mkShader(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+    console.error('Shader error:', gl.getShaderInfoLog(s));
+    return null;
+  }
+  return s;
+}
+
+const prog = gl.createProgram();
+const vs = mkShader(gl.VERTEX_SHADER, VS);
+const fs = mkShader(gl.FRAGMENT_SHADER, FS);
+gl.attachShader(prog, vs);
+gl.attachShader(prog, fs);
+gl.linkProgram(prog);
+
+if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+  console.error('Program error:', gl.getProgramInfoLog(prog));
+}
+
+// ── Fullscreen quad ──
+const quad = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+
+const aPos = gl.getAttribLocation(prog, 'a_pos');
+const uTime = gl.getUniformLocation(prog, 'u_time');
+const uRes = gl.getUniformLocation(prog, 'u_res');
+const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+const uSec = gl.getUniformLocation(prog, 'u_sec');
+
+let mx=window.innerWidth/2, my=window.innerHeight/2;
+let smx=mx, smy=my;
+document.addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; }, {passive:true});
+
+let currentSecGL = 0;
+let targetSecGL = 0;
+let fpsCount=0, fpsLast=performance.now(), fps=60;
+
+(function glLoop(ts){
+  requestAnimationFrame(glLoop);
+
+  // Smooth section value for shader
+  currentSecGL += (targetSecGL - currentSecGL) * 0.025;
+
+  // Smooth mouse
+  smx += (mx-smx)*.04; smy += (my-smy)*.04;
+
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  gl.uniform1f(uTime, ts*0.001);
+  gl.uniform2f(uRes, canvas.width, canvas.height);
+  gl.uniform2f(uMouse, smx, canvas.height-smy);
+  gl.uniform1f(uSec, currentSecGL);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  // FPS
+  fpsCount++;
+  const now = performance.now();
+  if(now-fpsLast > 500){ fps=Math.round(fpsCount*2); fpsCount=0; fpsLast=now; }
+  const fpsel = document.getElementById('hd-fps');
+  if(fpsel) fpsel.textContent = 'FPS: '+fps;
+
+  // Clock
+  const d=new Date();
+  const tel=document.getElementById('hd-time');
+  if(tel) tel.textContent=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+})();
+
+// ═══════════════════════════════════════════════════
+// CURSOR
+// ═══════════════════════════════════════════════════
+const cur=document.getElementById('cur'), cur2=document.getElementById('cur2');
+let cx=window.innerWidth/2, cy=window.innerHeight/2, rx=cx, ry=cy;
+document.addEventListener('mousemove', e=>{ cx=e.clientX; cy=e.clientY; cur.style.left=cx+'px'; cur.style.top=cy+'px'; },{passive:true});
+(function cl(){
+  rx+=(cx-rx)*.1; ry+=(cy-ry)*.1;
+  cur2.style.left=rx+'px'; cur2.style.top=ry+'px';
+  requestAnimationFrame(cl);
+})();
+
+// Lens flare follows mouse
+const lf=document.getElementById('lens-flare');
 document.addEventListener('mousemove', e=>{
-  mx=e.clientX; my=e.clientY;
-  cur.style.left=mx+'px'; cur.style.top=my+'px';
+  lf.style.left=e.clientX+'px'; lf.style.top=e.clientY+'px';
+  lf.style.opacity='.35';
 },{passive:true});
-(function loop(){
-  rx+=(mx-rx)*.12; ry+=(my-ry)*.12;
-  curRing.style.left=rx+'px'; curRing.style.top=ry+'px';
-  requestAnimationFrame(loop);
-})();
 
-// ═══ SECTION DATA ═══
-const SECTIONS = ['p-hero','p-about','p-skills','p-projects','p-journey','p-courses','p-contact'];
-const SEC_NAMES = ['home','about','skills','projects','journey','courses','contact'];
-let currentSec = 0;
-let transitioning = false;
+// ═══════════════════════════════════════════════════
+// SECTION MANAGEMENT
+// ═══════════════════════════════════════════════════
+const SECS = ['p0','p1','p2','p3','p4','p5','p6'];
+const NAMES = ['HOME','ABOUT','SKILLS','PROJECTS','JOURNEY','COURSES','CONTACT'];
+let cur_sec = 0;
+let busy = false;
 
-// ═══ THREE.JS IMMERSIVE 3D ═══
-(function(){
-  if(typeof THREE==='undefined') return;
+const panels = SECS.map(id=>document.getElementById(id));
+const dots = document.querySelectorAll('.pg-dot');
+const nbs = document.querySelectorAll('.nb');
+const sfx = document.getElementById('sfx');
+const stitle = document.getElementById('stitle');
+const stspan = document.getElementById('stspan');
+const footer = document.getElementById('ft');
+const scrl = document.getElementById('scrl');
 
-  const canvas = document.getElementById('c3d');
-  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
-  renderer.setClearColor(0x02020A, 1);
-  renderer.setSize(window.innerWidth, window.innerHeight);
+function go(idx){
+  if(busy || idx===cur_sec || idx<0 || idx>=SECS.length) return;
+  busy=true;
 
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x02020A, 0.035);
+  // Section label flash
+  stspan.textContent = NAMES[idx];
+  stitle.classList.add('show');
+  setTimeout(()=>stitle.classList.remove('show'), 800);
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 200);
-  camera.position.set(0, 0, 0);
+  // SFX flash
+  sfx.classList.add('flash');
+  setTimeout(()=>sfx.classList.remove('flash'), 150);
 
-  // ── TUNNEL / WORMHOLE ──
-  const TUNNEL_RADIUS = 6;
-  const TUNNEL_SEGS = 180;
-  const TUNNEL_RING_SEGS = 32;
-
-  // Tunnel geometry — open-ended cylinder we fly through
-  const tunnelGeo = new THREE.CylinderGeometry(TUNNEL_RADIUS, TUNNEL_RADIUS, 160, TUNNEL_RING_SEGS, TUNNEL_SEGS, true);
-  const tunnelMat = new THREE.MeshBasicMaterial({
-    color: 0x00F5FF,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.04,
-    side: THREE.BackSide
-  });
-  const tunnel = new THREE.Mesh(tunnelGeo, tunnelMat);
-  tunnel.rotation.x = Math.PI/2;
-  scene.add(tunnel);
-
-  // Glowing rings along tunnel
-  const rings = [];
-  for(let i=0; i<60; i++){
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(TUNNEL_RADIUS, 0.025, 4, TUNNEL_RING_SEGS),
-      new THREE.MeshBasicMaterial({
-        color: i%7===0 ? 0xFF4500 : (i%3===0 ? 0x00FF8C : 0x00F5FF),
-        transparent: true,
-        opacity: 0.5 + Math.random()*0.4
-      })
-    );
-    ring.position.z = -i*2.8;
-    ring.rotation.z = Math.random()*Math.PI*2;
-    scene.add(ring);
-    rings.push(ring);
-  }
-
-  // Hexagonal grid floor panels
-  const hexes = [];
-  function mkHex(x,y,z,col){
-    const m = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.4, 0.4, 0.04, 6),
-      new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:.15+Math.random()*.2})
-    );
-    m.position.set(x,y,z);
-    scene.add(m);
-    hexes.push(m);
-    return m;
-  }
-  // hex floor grid extending down the tunnel
-  for(let depth=0; depth<60; depth+=3){
-    for(let i=-4; i<=4; i++){
-      for(let j=-4; j<=4; j++){
-        if(Math.abs(i*0.9+j*0.5) < TUNNEL_RADIUS-1 && Math.random()>0.35){
-          const col = Math.random()>0.8 ? 0xFF4500 : (Math.random()>0.5 ? 0x00F5FF : 0x00FF8C);
-          mkHex(i*0.9, -TUNNEL_RADIUS+0.3+Math.random()*0.4, -depth*2.8+j*1.0, col);
-        }
-      }
-    }
-  }
-
-  // Floating particles
-  const PARTICLE_COUNT = 1200;
-  const pPos = new Float32Array(PARTICLE_COUNT*3);
-  const pCol = new Float32Array(PARTICLE_COUNT*3);
-  for(let i=0;i<PARTICLE_COUNT;i++){
-    const a = Math.random()*Math.PI*2;
-    const r = (1+Math.random()*(TUNNEL_RADIUS-1));
-    pPos[i*3] = Math.cos(a)*r;
-    pPos[i*3+1] = Math.sin(a)*r;
-    pPos[i*3+2] = -(Math.random()*170);
-    const c = Math.random();
-    if(c<.33){pCol[i*3]=0;pCol[i*3+1]=0.96;pCol[i*3+2]=1;}
-    else if(c<.66){pCol[i*3]=1;pCol[i*3+1]=0.27;pCol[i*3+2]=0;}
-    else{pCol[i*3]=0;pCol[i*3+1]=1;pCol[i*3+2]=0.55;}
-  }
-  const pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
-  pGeo.setAttribute('color', new THREE.BufferAttribute(pCol,3));
-  const pMat = new THREE.PointsMaterial({size:.04, vertexColors:true, transparent:true, opacity:.7});
-  const particles = new THREE.Points(pGeo, pMat);
-  scene.add(particles);
-
-  // Node spheres — section markers along tunnel
-  const nodeMeshes = [];
-  const nodeColors = [0x00F5FF, 0xFF4500, 0x00FF8C, 0xBF5AF2, 0xFFD60A, 0xFF4500, 0x00F5FF];
-  SECTIONS.forEach((_, i) => {
-    const node = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.35, 1),
-      new THREE.MeshBasicMaterial({color: nodeColors[i], wireframe:true, transparent:true, opacity:.8})
-    );
-    node.position.z = -i * 22;
-    node.position.x = Math.sin(i*1.1)*1.8;
-    node.position.y = Math.cos(i*0.8)*1.2;
-    scene.add(node);
-    nodeMeshes.push(node);
-
-    // Label ring around node
-    const lr = new THREE.Mesh(
-      new THREE.TorusGeometry(0.6, 0.008, 4, 24),
-      new THREE.MeshBasicMaterial({color:nodeColors[i], transparent:true, opacity:.5})
-    );
-    lr.position.copy(node.position);
-    scene.add(lr);
-  });
-
-  // Cross-section detail objects (visible up close)
-  const details = [];
-  function mkDetail(z, type){
-    let geo, color;
-    if(type===0){geo=new THREE.BoxGeometry(.6,.6,.6);color=0x00F5FF;}
-    else if(type===1){geo=new THREE.OctahedronGeometry(.4,0);color=0xFF4500;}
-    else if(type===2){geo=new THREE.TetrahedronGeometry(.45,0);color=0x00FF8C;}
-    else{geo=new THREE.TorusKnotGeometry(.3,.1,50,8);color=0xBF5AF2;}
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color, wireframe:true, transparent:true, opacity:.6}));
-    const a = Math.random()*Math.PI*2;
-    m.position.set(Math.cos(a)*(1+Math.random()*2), Math.sin(a)*(1+Math.random()*2), z);
-    m.userData.rotSpeed = {x:Math.random()*.02, y:Math.random()*.02, z:Math.random()*.01};
-    scene.add(m);
-    details.push(m);
-    return m;
-  }
-  for(let i=0; i<80; i++) mkDetail(-Math.random()*160, Math.floor(Math.random()*4));
-
-  // ── CAMERA Z TARGET based on section ──
-  const TARGET_Z = SECTIONS.map((_,i)=>-i*22);
-  let camTargetZ = 0;
-  let camTargetX = 0;
-  let camTargetY = 0;
-  let camZ = 0;
-  let camX = 0;
-  let camY = 0;
-  let t = 0;
-  let mouseOffX = 0, mouseOffY = 0;
-
-  document.addEventListener('mousemove', e=>{
-    mouseOffX = (e.clientX/window.innerWidth - .5)*.8;
-    mouseOffY = (e.clientY/window.innerHeight - .5)*.5;
-  },{passive:true});
-
-  // Ring pulse animation on section change
-  let ringPulseTime = -999;
-
-  window.addEventListener('resize',()=>{
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-  });
-
-  let tunnelClock = 0;
-  (function animate(){
-    requestAnimationFrame(animate);
-    t += 0.005;
-    tunnelClock += 0.005;
-
-    // Smooth camera to target
-    const speed = 0.04;
-    camZ += (camTargetZ - camZ)*speed;
-    camX += (camTargetX + mouseOffX - camX)*.05;
-    camY += (camTargetY - mouseOffY - camY)*.05;
-
-    camera.position.set(camX, camY, camZ+2);
-
-    // Look slightly ahead into tunnel
-    camera.lookAt(camX + mouseOffX*.3, camY - mouseOffY*.2, camZ-6);
-
-    // Animate rings — scroll past camera
-    rings.forEach((ring, i)=>{
-      ring.rotation.z += 0.004 + i*.0001;
-      const relZ = ring.position.z - camZ;
-      ring.material.opacity = relZ > 2 ? 0 : Math.max(0, .1 + (relZ+20)/20*.5);
-    });
-
-    // Animate node spheres
-    nodeMeshes.forEach((n, i)=>{
-      n.rotation.x += 0.01;
-      n.rotation.y += 0.015;
-      const dist = Math.abs(n.position.z - camZ);
-      n.material.opacity = Math.max(0, 1 - dist*.05);
-      n.scale.setScalar(dist < 3 ? 1.5 : 1);
-    });
-
-    // Animate detail objects
-    details.forEach(d=>{
-      d.rotation.x += d.userData.rotSpeed.x;
-      d.rotation.y += d.userData.rotSpeed.y;
-      d.rotation.z += d.userData.rotSpeed.z;
-      const dist = Math.abs(d.position.z - camZ);
-      d.material.opacity = Math.max(0, 1 - dist*.07) * .6;
-    });
-
-    // Animate hexes
-    hexes.forEach((h, i)=>{
-      const dist = Math.abs(h.position.z - camZ);
-      h.material.opacity = dist < 8 ? .3 + Math.sin(t+i)*.1 : Math.max(0,.05);
-    });
-
-    // Particle warp effect
-    const pp = particles.geometry.attributes.position.array;
-    for(let i=0; i<PARTICLE_COUNT; i++){
-      const iz = pp[i*3+2];
-      if(iz > camZ+4){
-        const a = Math.random()*Math.PI*2;
-        const r = 1+Math.random()*(TUNNEL_RADIUS-1);
-        pp[i*3] = Math.cos(a)*r;
-        pp[i*3+1] = Math.sin(a)*r;
-        pp[i*3+2] = camZ-170+Math.random()*4;
-      }
-    }
-    particles.geometry.attributes.position.needsUpdate = true;
-
-    // Subtle tunnel rotation
-    tunnel.rotation.z = tunnelClock * 0.06;
-
-    // Update depth label
-    const depthEl = document.getElementById('depth-label');
-    if(depthEl) depthEl.textContent = 'Depth: '+Math.abs(camZ).toFixed(2);
-
-    const coordsEl = document.getElementById('coords');
-    if(coordsEl) coordsEl.textContent = `X: ${camX.toFixed(2)} · Y: ${camY.toFixed(2)} · Z: ${camZ.toFixed(2)}`;
-
-    renderer.render(scene, camera);
-  })();
-
-  // Expose for section switching
-  window._set3DTarget = function(secIdx){
-    camTargetZ = TARGET_Z[secIdx];
-    camTargetX = nodeMeshes[secIdx] ? nodeMeshes[secIdx].position.x*.3 : 0;
-    camTargetY = nodeMeshes[secIdx] ? nodeMeshes[secIdx].position.y*.3 : 0;
-  };
-})();
-
-// ═══ SECTION MANAGEMENT ═══
-const panels = SECTIONS.map(id => document.getElementById(id));
-const navBtns = document.querySelectorAll('.nav-btn');
-const progressBar = document.getElementById('progress-bar');
-const transOverlay = document.getElementById('trans-overlay');
-const secLabel = document.getElementById('sec-label');
-const footer = document.getElementById('footer');
-const scrollHint = document.getElementById('scroll-hint');
-
-function showSection(idx, direction){
-  if(transitioning || idx===currentSec) return;
-  transitioning = true;
-
-  // Flash section label
-  secLabel.textContent = SEC_NAMES[idx].toUpperCase();
-  secLabel.classList.add('show');
-  setTimeout(()=>secLabel.classList.remove('show'), 700);
-
-  // Brief scan flash
-  transOverlay.classList.add('flash');
   setTimeout(()=>{
-    transOverlay.classList.remove('flash');
+    // Hide old
+    panels[cur_sec].classList.remove('show');
+    panels[cur_sec].querySelectorAll('.fade-up').forEach(e=>e.classList.remove('in'));
 
-    // Hide old panel
-    if(panels[currentSec]){
-      panels[currentSec].classList.remove('visible');
-      panels[currentSec].querySelectorAll('.rv').forEach(el=>el.classList.remove('in'));
-    }
+    cur_sec = idx;
+    targetSecGL = idx; // Update shader
 
-    currentSec = idx;
-
-    // Update 3D camera
-    if(window._set3DTarget) window._set3DTarget(idx);
-
-    // Show new panel after brief delay
     setTimeout(()=>{
-      if(panels[currentSec]){
-        panels[currentSec].classList.add('visible');
-        setTimeout(()=>{
-          panels[currentSec].querySelectorAll('.rv').forEach((el,i)=>{
-            setTimeout(()=>el.classList.add('in'), i*40);
-          });
-        }, 80);
-      }
-      // Update nav
-      navBtns.forEach((b,i)=>b.classList.toggle('active', i===idx));
-      // Progress
-      progressBar.style.width = (idx/(SECTIONS.length-1)*100)+'%';
+      panels[cur_sec].classList.add('show');
+      setTimeout(()=>{
+        panels[cur_sec].querySelectorAll('.fade-up').forEach((e,i)=>{
+          setTimeout(()=>e.classList.add('in'), i*50);
+        });
+      }, 60);
+
+      // Nav
+      nbs.forEach((b,i)=>b.classList.toggle('on',i===idx));
+      dots.forEach((d,i)=>d.classList.toggle('on',i===idx));
+
       // Footer
-      footer.style.opacity = idx===SECTIONS.length-1 ? '1' : '0';
-      footer.style.pointerEvents = idx===SECTIONS.length-1 ? 'auto' : 'none';
+      footer.style.opacity = idx===6?'1':'0';
+      footer.style.pointerEvents = idx===6?'auto':'none';
+
       // Scroll hint
-      scrollHint.style.opacity = idx===0 ? '1' : '0';
+      scrl.style.opacity = idx===0?'1':'0';
 
-      transitioning = false;
-    }, 200);
-  }, 300);
+      busy=false;
+    }, 220);
+  }, 140);
 }
+window.go = go;
 
-function goToSection(idx){
-  showSection(idx, idx>currentSec?1:-1);
-}
-window.goToSection = goToSection;
-
-// ── INIT ──
-panels[0].classList.add('visible');
+// Init hero
 setTimeout(()=>{
-  panels[0].querySelectorAll('.rv').forEach((el,i)=>{
-    setTimeout(()=>el.classList.add('in'), i*60+300);
+  panels[0].querySelectorAll('.fade-up').forEach((e,i)=>{
+    setTimeout(()=>e.classList.add('in'),i*80+200);
   });
-}, 200);
+},100);
 
-// ── SCROLL ──
-let lastScroll = 0;
+// ── Input ──
+let lastWheel=0;
 window.addEventListener('wheel', e=>{
-  if(transitioning) return;
-  const now = Date.now();
-  if(now - lastScroll < 800) return;
-  lastScroll = now;
-  if(e.deltaY > 20) goToSection(Math.min(currentSec+1, SECTIONS.length-1));
-  else if(e.deltaY < -20) goToSection(Math.max(currentSec-1, 0));
+  if(busy) return;
+  const now=Date.now();
+  if(now-lastWheel<750) return;
+  lastWheel=now;
+  go(e.deltaY>15 ? Math.min(cur_sec+1,6) : Math.max(cur_sec-1,0));
 },{passive:true});
 
-// ── TOUCH ──
-let ty0 = 0;
-window.addEventListener('touchstart', e=>{ty0=e.touches[0].clientY;},{passive:true});
-window.addEventListener('touchend', e=>{
-  if(transitioning) return;
-  const dy = e.changedTouches[0].clientY - ty0;
-  if(Math.abs(dy)>50){ goToSection(dy<0 ? Math.min(currentSec+1,SECTIONS.length-1) : Math.max(currentSec-1,0)); }
+let ty0=0;
+window.addEventListener('touchstart',e=>{ty0=e.touches[0].clientY;},{passive:true});
+window.addEventListener('touchend',e=>{
+  if(busy) return;
+  const dy=e.changedTouches[0].clientY-ty0;
+  if(Math.abs(dy)>45) go(dy<0?Math.min(cur_sec+1,6):Math.max(cur_sec-1,0));
 },{passive:true});
 
-// ── KEYBOARD ──
-document.addEventListener('keydown', e=>{
-  if(e.key==='ArrowDown'||e.key==='ArrowRight') goToSection(Math.min(currentSec+1,SECTIONS.length-1));
-  else if(e.key==='ArrowUp'||e.key==='ArrowLeft') goToSection(Math.max(currentSec-1,0));
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'||e.key==='PageDown') go(Math.min(cur_sec+1,6));
+  else if(e.key==='ArrowUp'||e.key==='PageUp') go(Math.max(cur_sec-1,0));
 });
 
-// ── NAV BUTTONS ──
-navBtns.forEach((b,i)=>b.addEventListener('click',()=>goToSection(i)));
+nbs.forEach((b,i)=>b.addEventListener('click',()=>go(i)));
+dots.forEach((d,i)=>d.addEventListener('click',()=>go(i)));
 
 // ═══ MODAL ═══
-function openModal(title, cat, img, desc, tags){
-  document.getElementById('m-title').textContent = title;
-  document.getElementById('m-cat').textContent = cat;
-  document.getElementById('m-img').src = img;
-  document.getElementById('m-img').alt = title;
-  document.getElementById('m-desc').textContent = desc;
-  const tc = document.getElementById('m-tags');
-  tc.innerHTML = '';
+function om(title,cat,img,desc,tags){
+  document.getElementById('mt').textContent=title;
+  document.getElementById('mc').textContent=cat;
+  const im=document.getElementById('mi'); im.src=img; im.alt=title;
+  document.getElementById('md').textContent=desc;
+  const tc=document.getElementById('mtg'); tc.innerHTML='';
   (tags||'').split(',').forEach(t=>{
-    const s=document.createElement('span');
-    s.className='modal-tag'; s.textContent=t.trim();
-    tc.appendChild(s);
+    const s=document.createElement('span'); s.className='mtag'; s.textContent=t.trim(); tc.appendChild(s);
   });
-  document.getElementById('modal-ov').classList.add('open');
+  document.getElementById('mov').classList.add('open');
   document.body.style.overflow='hidden';
 }
-window.openModal = openModal;
-function closeModal(){
-  document.getElementById('modal-ov').classList.remove('open');
-  document.body.style.overflow='';
-}
-window.closeModal = closeModal;
-document.getElementById('modal-ov').addEventListener('click',function(e){if(e.target===this)closeModal();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+window.om=om;
+function cm(){ document.getElementById('mov').classList.remove('open'); document.body.style.overflow=''; }
+window.cm=cm;
+document.getElementById('mov').addEventListener('click',function(e){if(e.target===this)cm();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
 
 // ═══ FORM ═══
-function submitForm(){
-  const n=document.getElementById('cfn').value.trim();
-  const e=document.getElementById('cfe').value.trim();
-  const m=document.getElementById('cfm').value.trim();
-  const stat=document.getElementById('cf-stat');
-  const btn=document.getElementById('cf-txt');
+function sf(){
+  const n=document.getElementById('fn').value.trim();
+  const e=document.getElementById('fe').value.trim();
+  const m=document.getElementById('fm').value.trim();
+  const st=document.getElementById('fst');
+  const bt=document.getElementById('fbt');
   if(!n||!e||!m){
-    stat.textContent='Please fill all required fields.';
-    stat.style.cssText='display:block;background:rgba(255,59,107,.07);border:1px solid rgba(255,59,107,.25);color:#FF3B6B;padding:10px;border-radius:2px;font-family:Space Mono,monospace;font-size:10px';
+    st.textContent='Please fill name, email, and message.';
+    st.style.cssText='display:block;background:rgba(255,59,107,.07);border:1px solid rgba(255,59,107,.25);color:#FF3B6B;padding:10px;border-radius:2px;font-family:Space Mono,monospace;font-size:9px';
     return;
   }
-  btn.textContent='Sending...';
+  bt.textContent='Sending...';
   setTimeout(()=>{
-    stat.textContent='✓ Message sent! Nithin will be in touch.';
-    stat.style.cssText='display:block;background:rgba(0,255,140,.07);border:1px solid rgba(0,255,140,.25);color:#00FF8C;padding:10px;border-radius:2px;font-family:Space Mono,monospace;font-size:10px';
-    btn.textContent='Send Message →';
-    ['cfn','cfe','cfs','cfm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    st.textContent='✓ Message sent! Nithin will be in touch.';
+    st.style.cssText='display:block;background:rgba(0,255,140,.07);border:1px solid rgba(0,255,140,.3);color:#00FF8C;padding:10px;border-radius:2px;font-family:Space Mono,monospace;font-size:9px';
+    bt.textContent='Send Message →';
+    ['fn','fe','fs','fm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   },1200);
 }
-window.submitForm=submitForm;
+window.sf=sf;
 </script>
 </body>
 </html>
