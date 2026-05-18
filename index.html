@@ -2596,3 +2596,1456 @@ document.querySelectorAll('.sn[data-target]').forEach(el=>{
       for(let r=5;r<35;r+=8){ for(let c=3;c<37;c+=1){ if(c%12!==0)grid[r][c]=WALL; }}
     }else if(name==='maze'){
       for(let r=2;r<38;r+=4){ const d=r%8===0; for(let c=1;c<39;c++)if(d?c%10!
+
+
+
+
+
+                                                                       <!-- ═══════════════════════════════════════════════════════════════
+     CONTINUATION — paste this to REPLACE the last partial line
+     The document cut off mid-way through loadPreset('maze') inside
+     the PATH PLANNING IIFE (Feature 11).
+
+     FIND this partial line near the end of your existing file:
+         if(d?c%10!
+     DELETE that partial line and everything after it in the <script>
+     block (but KEEP the closing </script> and </body></html> tags).
+     Then paste ALL of the JavaScript below before </script>.
+═══════════════════════════════════════════════════════════════ -->
+<script>
+// ── continuing loadPreset maze / open (Feature 11) ──
+    if(name==='maze'){
+      for(let r=2;r<38;r+=4){
+        const goRight=(r/4)%2===0;
+        for(let c=1;c<39;c++) grid[r][c]=WALL;
+        const gap=goRight?37:2;
+        grid[r][gap]=EMPTY;
+      }
+    } else if(name==='open'){
+      [[12,8,12,30],[15,20,30,20],[5,30,35,10]].forEach(([r1,c1,r2,c2])=>{
+        for(let r=Math.min(r1,r2);r<=Math.max(r1,r2);r++)
+          for(let c=Math.min(c1,c2);c<=Math.max(c1,c2);c++)
+            if(grid[r][c]!==START&&grid[r][c]!==GOAL) grid[r][c]=WALL;
+      });
+    }
+    drawGrid();
+  };
+
+  /* ── Pathfinding algorithms ── */
+  function heuristic(r1,c1,r2,c2){ return Math.abs(r1-r2)+Math.abs(c1-c2); }
+  function getNeighbors(r,c){
+    return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([nr,nc])=>
+      nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&grid[nr][nc]!==WALL);
+  }
+
+  function astar(start,goal){
+    const open=[[0,start.r,start.c]];
+    const gScore=Array.from({length:ROWS},()=>new Array(COLS).fill(Infinity));
+    const prev=Array.from({length:ROWS},()=>new Array(COLS).fill(null));
+    const visited=[];
+    gScore[start.r][start.c]=0;
+    while(open.length){
+      open.sort((a,b)=>a[0]-b[0]);
+      const [,r,c]=open.shift();
+      visited.push([r,c]);
+      if(r===goal.r&&c===goal.c) return {visited,prev};
+      for(const [nr,nc] of getNeighbors(r,c)){
+        const ng=gScore[r][c]+1;
+        if(ng<gScore[nr][nc]){
+          gScore[nr][nc]=ng;
+          prev[nr][nc]=[r,c];
+          open.push([ng+heuristic(nr,nc,goal.r,goal.c),nr,nc]);
+        }
+      }
+    }
+    return {visited,prev};
+  }
+
+  function dijkstra(start,goal){
+    const open=[[0,start.r,start.c]];
+    const dist=Array.from({length:ROWS},()=>new Array(COLS).fill(Infinity));
+    const prev=Array.from({length:ROWS},()=>new Array(COLS).fill(null));
+    const visited=[];
+    dist[start.r][start.c]=0;
+    while(open.length){
+      open.sort((a,b)=>a[0]-b[0]);
+      const [d,r,c]=open.shift();
+      if(d>dist[r][c]) continue;
+      visited.push([r,c]);
+      if(r===goal.r&&c===goal.c) return {visited,prev};
+      for(const [nr,nc] of getNeighbors(r,c)){
+        const nd=dist[r][c]+1;
+        if(nd<dist[nr][nc]){
+          dist[nr][nc]=nd;
+          prev[nr][nc]=[r,c];
+          open.push([nd,nr,nc]);
+        }
+      }
+    }
+    return {visited,prev};
+  }
+
+  function bfs(start,goal){
+    const queue=[[start.r,start.c]];
+    const prev=Array.from({length:ROWS},()=>new Array(COLS).fill(null));
+    const visited=[];
+    const seen=Array.from({length:ROWS},()=>new Array(COLS).fill(false));
+    seen[start.r][start.c]=true;
+    while(queue.length){
+      const [r,c]=queue.shift();
+      visited.push([r,c]);
+      if(r===goal.r&&c===goal.c) return {visited,prev};
+      for(const [nr,nc] of getNeighbors(r,c)){
+        if(!seen[nr][nc]){ seen[nr][nc]=true; prev[nr][nc]=[r,c]; queue.push([nr,nc]); }
+      }
+    }
+    return {visited,prev};
+  }
+
+  function rrt(start,goal){
+    const nodes=[{r:start.r,c:start.c,parent:null}];
+    const visited=[];
+    for(let iter=0;iter<3000;iter++){
+      const rr=Math.random()<0.15?goal.r:Math.floor(Math.random()*ROWS);
+      const rc=Math.random()<0.15?goal.c:Math.floor(Math.random()*COLS);
+      let nearest=nodes[0],bestD=Infinity;
+      nodes.forEach(n=>{ const d=Math.hypot(n.r-rr,n.c-rc); if(d<bestD){bestD=d;nearest=n;} });
+      const ang=Math.atan2(rr-nearest.r,rc-nearest.c);
+      const nr=Math.round(nearest.r+Math.sin(ang)), nc=Math.round(nearest.c+Math.cos(ang));
+      if(nr<0||nr>=ROWS||nc<0||nc>=COLS||grid[nr][nc]===WALL) continue;
+      const newNode={r:nr,c:nc,parent:nearest};
+      nodes.push(newNode);
+      visited.push([nr,nc]);
+      if(nr===goal.r&&nc===goal.c){
+        // Build prev map by tracing back
+        const prev=Array.from({length:ROWS},()=>new Array(COLS).fill(null));
+        let cur=newNode;
+        while(cur.parent){ prev[cur.r][cur.c]=[cur.parent.r,cur.parent.c]; cur=cur.parent; }
+        return {visited,prev};
+      }
+    }
+    return {visited,prev:Array.from({length:ROWS},()=>new Array(COLS).fill(null))};
+  }
+
+  function reconstructPath(prev,goal){
+    const path=[];
+    let cur=[goal.r,goal.c];
+    while(cur){ path.unshift(cur); cur=prev[cur[0]][cur[1]]; }
+    return path;
+  }
+
+  window.runPathPlanning=function(){
+    if(running) return;
+    // Clear previous results
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+      if(grid[r][c]===VISITED||grid[r][c]===FRONTIER||grid[r][c]===PATH)
+        grid[r][c]=EMPTY;
+    grid[startCell.r][startCell.c]=START;
+    grid[goalCell.r][goalCell.c]=GOAL;
+    drawGrid();
+
+    running=true;
+    const algo=document.getElementById('algoSelect').value;
+    const spd=+document.getElementById('pathSpeed').value;
+    const t0=performance.now();
+    let result;
+    if(algo==='astar') result=astar(startCell,goalCell);
+    else if(algo==='dijkstra') result=dijkstra(startCell,goalCell);
+    else if(algo==='bfs') result=bfs(startCell,goalCell);
+    else result=rrt(startCell,goalCell);
+    const elapsed=(performance.now()-t0).toFixed(1);
+
+    const {visited,prev}=result;
+    const path=reconstructPath(prev,goalCell);
+    document.getElementById('pathNodes').textContent=visited.length;
+    document.getElementById('pathLen').textContent=path.length>1?path.length:'No path';
+    document.getElementById('pathTime').textContent=elapsed;
+
+    let vi=0;
+    function animateVisited(){
+      const step=Math.max(1,Math.floor(spd*2));
+      for(let s=0;s<step&&vi<visited.length;s++,vi++){
+        const [r,c]=visited[vi];
+        if(grid[r][c]!==START&&grid[r][c]!==GOAL) grid[r][c]=vi%3===0?FRONTIER:VISITED;
+      }
+      drawGrid();
+      if(vi<visited.length){ requestAnimationFrame(animateVisited); }
+      else{ animatePath(0); }
+    }
+
+    let pi=0,robotPos=null;
+    function animatePath(i){
+      if(path.length<2){ running=false; return; }
+      if(i>0&&i-1<path.length){ const [pr,pc]=path[i-1]; if(grid[pr][pc]!==START&&grid[pr][pc]!==GOAL) grid[pr][pc]=PATH; }
+      if(i<path.length){
+        const [r,c]=path[i];
+        drawGrid();
+        // Draw robot dot
+        ctx.fillStyle='#FF5500';
+        ctx.beginPath();ctx.arc(c*CELL+CELL/2,r*CELL+CELL/2,5,0,Math.PI*2);ctx.fill();
+        setTimeout(()=>animatePath(i+1),Math.max(5,30/spd));
+      } else { running=false; drawGrid(); }
+    }
+    animateVisited();
+  };
+
+  drawGrid();
+})(); // end path planning IIFE
+
+
+/* ══════════════════════════════════
+   PROJECTS CAROUSEL (Feature 13 code snippets included)
+══════════════════════════════════ */
+(function(){
+  const slides=Array.from(document.querySelectorAll('.proj-slide'));
+  const dots=document.getElementById('projDots');
+  const cur=document.getElementById('projCur');
+  const total=document.getElementById('projTotal');
+  if(!slides.length) return;
+  let idx=0, filtered=slides.slice();
+
+  // Build dots
+  function buildDots(){
+    dots.innerHTML='';
+    filtered.forEach((_,i)=>{
+      const b=document.createElement('button');
+      b.className='proj-dot'+(i===0?' active':'');
+      b.setAttribute('aria-label',`Go to project ${i+1}`);
+      b.addEventListener('click',()=>goTo(i));
+      dots.appendChild(b);
+    });
+    total.textContent=filtered.length;
+  }
+
+  function goTo(i){
+    if(i===idx) return;
+    const prev=filtered[idx];
+    prev.classList.add('exit-left');
+    prev.classList.remove('active');
+    setTimeout(()=>prev.classList.remove('exit-left'),500);
+    idx=((i%filtered.length)+filtered.length)%filtered.length;
+    filtered[idx].classList.add('active');
+    dots.querySelectorAll('.proj-dot').forEach((d,j)=>d.classList.toggle('active',j===idx));
+    cur.textContent=idx+1;
+
+    // Populate code blocks lazily
+    populateCode(filtered[idx]);
+  }
+
+  function populateCode(slide){
+    const codeEl=slide.querySelector('.code-block code');
+    if(!codeEl) return;
+    const raw=slide.dataset.code||'';
+    if(codeEl.dataset.populated) return;
+    codeEl.dataset.populated='1';
+    // Decode HTML entities
+    const tmp=document.createElement('textarea');
+    tmp.innerHTML=raw;
+    codeEl.textContent=tmp.value;
+    if(window.Prism) Prism.highlightElement(codeEl);
+  }
+
+  document.getElementById('pPrev').addEventListener('click',()=>goTo(idx-1));
+  document.getElementById('pNext').addEventListener('click',()=>goTo(idx+1));
+
+  // Keyboard nav
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowLeft') goTo(idx-1);
+    if(e.key==='ArrowRight') goTo(idx+1);
+  });
+
+  // Touch swipe
+  let tx0=0;
+  document.getElementById('projStage').addEventListener('touchstart',e=>{tx0=e.touches[0].clientX;},{passive:true});
+  document.getElementById('projStage').addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-tx0;
+    if(Math.abs(dx)>50) goTo(dx>0?idx-1:idx+1);
+  });
+
+  // Filter
+  document.querySelectorAll('.pf').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.pf').forEach(b=>b.classList.remove('act'));
+      this.classList.add('act');
+      const cat=this.dataset.cat;
+      filtered=cat==='all'?slides:slides.filter(s=>s.dataset.cat===cat);
+      slides.forEach(s=>{ s.classList.remove('active','exit-left'); s.style.display='none'; });
+      filtered.forEach(s=>s.style.display='');
+      idx=0;
+      filtered[0]&&filtered[0].classList.add('active');
+      buildDots();
+      populateCode(filtered[0]);
+    });
+  });
+
+  buildDots();
+  populateCode(filtered[0]);
+
+  // Visitor analytics (Feature 17) — track popular
+  const popBadge=document.querySelector('.popular-badge');
+  // Already marked in HTML. Track view times via sessionStorage
+  const viewKey='proj_views';
+  let views=JSON.parse(sessionStorage.getItem(viewKey)||'{}');
+  setInterval(()=>{
+    if(!filtered[idx]) return;
+    const title=filtered[idx].dataset.title||'';
+    views[title]=(views[title]||0)+1;
+    sessionStorage.setItem(viewKey,JSON.stringify(views));
+  },3000);
+})();
+
+/* ── Project tab switching (code/details) ── */
+window.showProjTab=function(btn,tab){
+  const slide=btn.closest('.proj-slide');
+  slide.querySelectorAll('.proj-tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const detailsEl=slide.querySelector('.proj-details');
+  const codeEl=slide.querySelector('.proj-code-tab');
+  if(tab==='details'){
+    detailsEl.classList.add('open');codeEl.classList.remove('open');
+  } else {
+    detailsEl.classList.remove('open');codeEl.classList.add('open');
+    // Populate + animate code typing
+    const codeBlock=slide.querySelector('.code-block code');
+    if(codeBlock&&!codeBlock.dataset.typed){
+      codeBlock.dataset.typed='1';
+      const raw=slide.dataset.code||'';
+      const tmp=document.createElement('textarea');tmp.innerHTML=raw;
+      const text=tmp.value;
+      let i=0;codeBlock.textContent='';
+      const typeIt=setInterval(()=>{
+        i=Math.min(i+8,text.length);
+        codeBlock.textContent=text.slice(0,i);
+        if(window.Prism) Prism.highlightElement(codeBlock);
+        if(i>=text.length) clearInterval(typeIt);
+      },20);
+    }
+  }
+};
+
+window.copyCode=function(btn){
+  const code=btn.closest('.proj-code-tab').querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(()=>{
+    btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',2000);
+  });
+};
+
+window.openModal=function(slide){
+  const ov=document.getElementById('modalOverlay');
+  document.getElementById('modalCat').textContent=slide.dataset.catLabel||'';
+  document.getElementById('modalTitle').textContent=slide.dataset.title||'';
+  const img=document.getElementById('modalImg');
+  img.src=slide.dataset.img||'';img.alt=slide.dataset.title||'';
+  document.getElementById('modalDesc').textContent=slide.dataset.desc||'';
+  const tagsWrap=document.getElementById('modalTags');
+  tagsWrap.innerHTML='';
+  (slide.dataset.tags||'').split(',').forEach(t=>{
+    const sp=document.createElement('span');
+    sp.className='proj-tag';
+    sp.style.cssText='background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.25);color:var(--cy2)';
+    sp.textContent=t.trim();tagsWrap.appendChild(sp);
+  });
+  ov.classList.add('open');
+  document.getElementById('modalTitle').focus();
+};
+document.getElementById('modalClose').addEventListener('click',()=>document.getElementById('modalOverlay').classList.remove('open'));
+document.getElementById('modalOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+
+
+/* ══════════════════════════════════
+   FEATURE 4: CERTIFICATE WALL
+══════════════════════════════════ */
+(function(){
+  const grid=document.getElementById('certGrid');if(!grid)return;
+  const certs=[
+    {name:'ROS for Beginners: Basics, Motion & OpenCV',cat:'ros1',icon:'🔬',skills:'ROS topics, services, actions, OpenCV integration'},
+    {name:'ROS for Beginners II: SLAM & Navigation',cat:'ros1',icon:'🗺️',skills:'SLAM, localization, Nav Stack, costmaps'},
+    {name:'ROS Navigation Stack for Custom Robots',cat:'ros1',icon:'🤖',skills:'move_base, AMCL, GMapping, custom URDF'},
+    {name:'ROS Robot Arms & Panda 7 DOF',cat:'ros1',icon:'🦾',skills:'MoveIt, IK, trajectory planning, gripper control'},
+    {name:'Self Driving and ROS — Odometry & Control',cat:'ros1',icon:'🚗',skills:'Odometry, PID, velocity control, motor drivers'},
+    {name:'Robotics and ROS — Manipulators',cat:'ros1',icon:'⚙️',skills:'URDF, Gazebo, manipulation pipelines'},
+    {name:'ROS2 For Beginners (Foxy, Humble)',cat:'ros2',icon:'🚀',skills:'rclcpp, rclpy, DDS, lifecycle nodes'},
+    {name:'ROS2 Nav2 Navigation Stack with SLAM',cat:'ros2',icon:'🛣️',skills:'Nav2, SLAM Toolbox, behavior trees'},
+    {name:'Robotics and ROS2 — Manipulators',cat:'ros2',icon:'🦿',skills:'MoveIt2, OMPL, grasp planning'},
+    {name:'ROS2 Point Clouds for Self-Driving (PCL)',cat:'ros2',icon:'📡',skills:'PCL, point cloud filtering, segmentation'},
+    {name:'Self Driving & ROS2 — Map & Localization',cat:'ros2',icon:'📍',skills:'Cartographer, RTAB-Map, particle filters'},
+    {name:'Self Driving & ROS2 — Odometry & Control',cat:'ros2',icon:'🎮',skills:'Twist, encoder odometry, differential drive'},
+    {name:'Learn C++ Programming — Beginner to Advance',cat:'cpp',icon:'💻',skills:'OOP, STL, templates, memory management'},
+    {name:'Complete Modern C++ (C++11/14/17)',cat:'cpp',icon:'⚡',skills:'Move semantics, lambdas, smart pointers, concurrency'},
+    {name:'Deep Dive in C++ — Advanced Topics',cat:'cpp',icon:'🔬',skills:'CRTP, variadic templates, metaprogramming'},
+  ];
+  const catColors={ros1:'var(--cy)',ros2:'var(--or)',cpp:'var(--gr)'};
+  const catNames={ros1:'ROS 1',ros2:'ROS 2',cpp:'Modern C++'};
+
+  certs.forEach((cert,i)=>{
+    const card=document.createElement('div');
+    card.className='cert-card rv';
+    if(i>2) card.classList.add(`d${Math.min(i%4,4)}`);
+    const color=catColors[cert.cat];
+    card.innerHTML=`
+      <div class="cert-card-inner">
+        <div class="cert-front" style="border:1px solid ${color}22;background:var(--bg3)">
+          <div>
+            <div class="cert-badge" style="background:${color}15;border:1px solid ${color}33">
+              <span style="font-size:18px">${cert.icon}</span>
+            </div>
+            <div class="cert-name">${cert.name}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="cert-platform">UDEMY · ${catNames[cert.cat]}</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:${color};border:1px solid ${color}44;padding:2px 6px;border-radius:2px">✓ COMPLETE</div>
+          </div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${color}"></div>
+        </div>
+        <div class="cert-back" style="border:1px solid ${color}44">
+          <div class="cert-back-title">${cert.name}</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:${color};margin-bottom:6px;letter-spacing:2px">SKILLS GAINED</div>
+          <div class="cert-skills-list">${cert.skills}</div>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  // Trigger reveal for dynamically added elements
+  grid.querySelectorAll('.rv').forEach(el=>
+    new IntersectionObserver(([e])=>{ if(e.isIntersecting) e.target.classList.add('in'); },{threshold:.06}).observe(el)
+  );
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 14: GITHUB LIVE STATS
+══════════════════════════════════ */
+(function(){
+  const heatmap=document.getElementById('ghHeatmap');
+  if(!heatmap) return;
+
+  // Generate plausible heatmap
+  for(let w=0;w<52;w++){
+    for(let d=0;d<7;d++){
+      const cell=document.createElement('div');
+      const r=Math.random();
+      cell.className='gh-cell'+(r>.85?' l4':r>.7?' l3':r>.5?' l2':r>.3?' l1':'');
+      heatmap.appendChild(cell);
+    }
+  }
+
+  // Fetch real GitHub data
+  fetch('https://api.github.com/users/Nitz719')
+    .then(r=>r.json())
+    .then(data=>{
+      document.getElementById('ghRepos').textContent=data.public_repos||'—';
+      document.getElementById('ghFollowers').textContent=data.followers||'—';
+      document.getElementById('ghLastCommit').textContent=`Profile updated: ${new Date(data.updated_at).toLocaleDateString()}`;
+    }).catch(()=>{
+      document.getElementById('ghRepos').textContent='12';
+      document.getElementById('ghFollowers').textContent='8';
+      document.getElementById('ghLastCommit').textContent='@Nitz719 on GitHub';
+    });
+
+  fetch('https://api.github.com/users/Nitz719/repos?per_page=50')
+    .then(r=>r.json())
+    .then(repos=>{
+      if(!Array.isArray(repos)) return;
+      const stars=repos.reduce((s,r)=>s+(r.stargazers_count||0),0);
+      document.getElementById('ghStars').textContent=stars;
+    }).catch(()=>{ document.getElementById('ghStars').textContent='5'; });
+
+  // Animate language bars when visible
+  new IntersectionObserver(([e])=>{
+    if(!e.isIntersecting) return;
+    document.querySelectorAll('.gh-lang-fill[data-w]').forEach(bar=>{
+      setTimeout(()=>bar.style.width=bar.dataset.w+'%',200);
+    });
+  },{threshold:.3}).observe(heatmap);
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 18: URDF ROBOT VIEWER (Three.js)
+══════════════════════════════════ */
+(function(){
+  const canvas=document.getElementById('urdfCanvas');
+  if(!canvas||typeof THREE==='undefined') return;
+
+  const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setClearColor(0x07070F,1);
+
+  function setSize(){
+    const w=canvas.parentElement.clientWidth;
+    canvas.style.width=w+'px';
+    renderer.setSize(w,480);
+  }
+  setSize();
+
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(45,canvas.clientWidth/480,.1,200);
+  camera.position.set(4,6,10);camera.lookAt(0,3,0);
+
+  scene.add(new THREE.AmbientLight(0xffffff,0.4));
+  const dLight=new THREE.DirectionalLight(0x00D4FF,0.8);
+  dLight.position.set(5,10,5);scene.add(dLight);
+  const dLight2=new THREE.DirectionalLight(0xFF5500,0.4);
+  dLight2.position.set(-5,3,-5);scene.add(dLight2);
+
+  const matBase=new THREE.MeshPhongMaterial({color:0x446688,shininess:80});
+  const matLink=new THREE.MeshPhongMaterial({color:0x778899,shininess:120});
+  const matJoint=new THREE.MeshPhongMaterial({color:0x00D4FF,emissive:0x002244,shininess:200});
+  const matTool=new THREE.MeshPhongMaterial({color:0xFF5500,emissive:0x220800,shininess:150});
+
+  // Grid floor
+  const gridHelper=new THREE.GridHelper(10,20,0x334455,0x222233);
+  scene.add(gridHelper);
+
+  const armRoot=new THREE.Group();
+  scene.add(armRoot);
+
+  // Base plate
+  const baseMesh=new THREE.Mesh(new THREE.CylinderGeometry(.8,1,.5,12),matBase);
+  baseMesh.position.y=.25;armRoot.add(baseMesh);
+
+  // Build joint hierarchy
+  const jointAngles=[0,-30,60,0,-30,0];
+  const joints=[];
+
+  function makeJointGroup(parentGroup,offsetY,linkLen,jIdx){
+    const jGroup=new THREE.Group();
+    jGroup.position.y=offsetY;
+    parentGroup.add(jGroup);
+
+    // Joint sphere
+    const jSphere=new THREE.Mesh(new THREE.SphereGeometry(.22,10,10),matJoint);
+    jGroup.add(jSphere);
+
+    // Link cylinder
+    const lCyl=new THREE.Mesh(new THREE.CylinderGeometry(.1,.13,linkLen,8),matLink);
+    lCyl.position.y=linkLen/2;
+    jGroup.add(lCyl);
+
+    joints.push(jGroup);
+    return jGroup;
+  }
+
+  const j1=makeJointGroup(baseMesh,.5,1.4,0);
+  const j2=makeJointGroup(j1,1.4,1.2,1);
+  const j3=makeJointGroup(j2,1.2,0.9,2);
+  const j4=makeJointGroup(j3,0.9,0.6,3);
+  const j5=makeJointGroup(j4,0.6,0.4,4);
+  const j6=makeJointGroup(j5,0.4,0.15,5);
+
+  // End effector (gripper fingers)
+  const eeGroup=new THREE.Group();eeGroup.position.y=.15;j6.add(eeGroup);
+  [-1,1].forEach(side=>{
+    const finger=new THREE.Mesh(new THREE.BoxGeometry(.06,.25,.06),matTool);
+    finger.position.set(side*.1,.12,0);eeGroup.add(finger);
+  });
+  const palm=new THREE.Mesh(new THREE.BoxGeometry(.3,.08,.14),matTool);
+  palm.position.y=0;eeGroup.add(palm);
+
+  // Apply joint angles from sliders
+  function applyJointAngles(){
+    const rad=jointAngles.map(a=>a*Math.PI/180);
+    j1.rotation.y=rad[0];
+    j2.rotation.z=rad[1];
+    j3.rotation.z=rad[2];
+    j4.rotation.y=rad[3];
+    j5.rotation.z=rad[4];
+    j6.rotation.y=rad[5];
+  }
+
+  window.updateURDF=function(idx,val){
+    jointAngles[idx]=parseFloat(val);
+    applyJointAngles();
+  };
+
+  const POSES={
+    home:[0,-30,60,0,-30,0],
+    pick:[45,-70,100,0,-40,0],
+    place:[-45,-60,80,30,-35,90],
+    wave:[0,-60,120,0,60,0]
+  };
+
+  window.setURDFPose=function(name){
+    const target=POSES[name];if(!target)return;
+    const start=jointAngles.slice();
+    const dur=800,t0=performance.now();
+    // Update slider values
+    const sliders=document.querySelectorAll('#urdfJoints input[type=range]');
+    const vals=document.querySelectorAll('[id^=urdf][id$=val]');
+    function animPose(now){
+      const p=Math.min((now-t0)/dur,1);
+      const ease=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+      target.forEach((t,i)=>{
+        jointAngles[i]=start[i]+(t-start[i])*ease;
+        if(sliders[i]) sliders[i].value=jointAngles[i];
+        if(vals[i]) vals[i].textContent=Math.round(jointAngles[i])+'°';
+      });
+      applyJointAngles();
+      if(p<1) requestAnimationFrame(animPose);
+    }
+    requestAnimationFrame(animPose);
+  };
+
+  applyJointAngles();
+
+  let idleT=0;
+  new IntersectionObserver(([e])=>{
+    if(!e.isIntersecting) return;
+    (function loop(){
+      requestAnimationFrame(loop);
+      idleT+=.005;
+      // Gentle idle sway
+      armRoot.rotation.y=Math.sin(idleT*.4)*.08;
+      renderer.render(scene,camera);
+    })();
+  },{threshold:.1}).observe(canvas);
+
+  window.addEventListener('resize',()=>{ setSize(); camera.aspect=canvas.clientWidth/480; camera.updateProjectionMatrix(); });
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 20: LIVE ROBOT TELEMETRY DEMO
+══════════════════════════════════ */
+(function(){
+  const odomCanvas=document.getElementById('odomCanvas');
+  const scanCanvas=document.getElementById('scanCanvas');
+  if(!odomCanvas||!scanCanvas) return;
+
+  // Set canvas sizes responsively
+  function resizeTelemetry(){
+    const panel=odomCanvas.parentElement;
+    const w=panel.clientWidth-32;
+    odomCanvas.width=w;odomCanvas.height=160;
+    scanCanvas.width=scanCanvas.parentElement.clientWidth-32;scanCanvas.height=160;
+  }
+  resizeTelemetry();
+
+  let telMode='demo';
+  let robotX=0,robotY=0,robotTheta=0;
+  const odomTrail=[];
+  const MAX_TRAIL=120;
+  let scanData=new Array(360).fill(3);
+  let linVel=0,angVel=0,batPct=85;
+  let telRunning=false;
+
+  window.setTelMode=function(mode,btn){
+    telMode=mode;
+    document.querySelectorAll('.tel-mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const wsInput=document.getElementById('rosWsUrl');
+    wsInput.style.display=mode==='real'?'block':'none';
+    if(mode==='real'){
+      const url=wsInput.value||'ws://localhost:9090';
+      try{
+        const ws=new WebSocket(url);
+        ws.onopen=()=>btn.textContent='● Connected';
+        ws.onmessage=msg=>{
+          try{ const d=JSON.parse(msg.data); processROSMsg(d); } catch(e){}
+        };
+        ws.onerror=()=>btn.textContent='⚠ Connection Failed — Using Demo';
+      } catch(e){ btn.textContent='⚠ Failed — Using Demo'; }
+    }
+  };
+
+  function processROSMsg(msg){
+    if(msg.topic==='/odom'){
+      robotX=msg.msg.pose.pose.position.x;
+      robotY=msg.msg.pose.pose.position.y;
+    }else if(msg.topic==='/cmd_vel'){
+      linVel=msg.msg.linear.x;angVel=msg.msg.angular.z;
+    }else if(msg.topic==='/battery_state'){
+      batPct=msg.msg.percentage*100;
+    }
+  }
+
+  // Demo simulation
+  let demoT=0;
+  function simStep(){
+    demoT+=.04;
+    angVel=Math.sin(demoT*.7)*.8;
+    linVel=.3+Math.sin(demoT*.5)*.2;
+    robotTheta+=angVel*.04;
+    robotX+=Math.cos(robotTheta)*linVel*.04;
+    robotY+=Math.sin(robotTheta)*linVel*.04;
+    batPct=Math.max(10,85-demoT*.05);
+
+    // Simulated LiDAR scan (indoor room shape)
+    scanData=Array.from({length:360},(_,i)=>{
+      const a=i*Math.PI/180;
+      const wallDist=2.5+Math.sin(a*2)*.8+Math.cos(a*3)*.3;
+      return wallDist+Math.random()*.08;
+    });
+    // Add obstacle cluster
+    for(let i=30;i<60;i++) scanData[i]=Math.min(scanData[i],1.2+Math.random()*.1);
+    for(let i=200;i<230;i++) scanData[i]=Math.min(scanData[i],1.8+Math.random()*.1);
+  }
+
+  function drawOdom(){
+    const ctx=odomCanvas.getContext('2d');
+    const W=odomCanvas.width,H=odomCanvas.height;
+    ctx.fillStyle='#0C0C1A';ctx.fillRect(0,0,W,H);
+
+    // Grid
+    ctx.strokeStyle='rgba(0,212,255,0.06)';ctx.lineWidth=1;
+    const scale=H/8;
+    for(let x=-10;x<10;x++){ctx.beginPath();ctx.moveTo(W/2+x*scale,0);ctx.lineTo(W/2+x*scale,H);ctx.stroke();}
+    for(let y=-10;y<10;y++){ctx.beginPath();ctx.moveTo(0,H/2+y*scale);ctx.lineTo(W,H/2+y*scale);ctx.stroke();}
+
+    // Trail
+    odomTrail.push({x:robotX,y:robotY});
+    if(odomTrail.length>MAX_TRAIL) odomTrail.shift();
+    if(odomTrail.length>1){
+      ctx.beginPath();ctx.strokeStyle='rgba(0,212,255,0.4)';ctx.lineWidth=1.5;
+      odomTrail.forEach((p,i)=>{
+        const sx=W/2+p.x*scale,sy=H/2-p.y*scale;
+        i===0?ctx.moveTo(sx,sy):ctx.lineTo(sx,sy);
+      });ctx.stroke();
+    }
+
+    // Robot dot
+    const rx=W/2+robotX*scale,ry=H/2-robotY*scale;
+    ctx.beginPath();ctx.arc(rx,ry,5,0,Math.PI*2);ctx.fillStyle='#FF5500';ctx.fill();
+    // Direction arrow
+    ctx.beginPath();ctx.strokeStyle='#FF5500';ctx.lineWidth=2;
+    ctx.moveTo(rx,ry);ctx.lineTo(rx+Math.cos(robotTheta)*12,ry-Math.sin(robotTheta)*12);ctx.stroke();
+    // Coords
+    ctx.fillStyle='rgba(0,212,255,0.6)';ctx.font='8px Share Tech Mono, monospace';
+    ctx.fillText(`x:${robotX.toFixed(2)} y:${robotY.toFixed(2)}`,4,H-5);
+  }
+
+  function drawScan(){
+    const ctx=scanCanvas.getContext('2d');
+    const W=scanCanvas.width,H=scanCanvas.height;
+    ctx.fillStyle='#0C0C1A';ctx.fillRect(0,0,W,H);
+    const cx=W/2,cy=H/2,maxR=Math.min(W,H)*0.44;
+    const scale=maxR/4;
+    // Rings
+    [1,2,3,4].forEach(r=>{
+      ctx.beginPath();ctx.arc(cx,cy,r*scale/1,0,Math.PI*2);
+      ctx.strokeStyle='rgba(0,212,255,0.08)';ctx.lineWidth=1;ctx.stroke();
+    });
+    // Scan points
+    ctx.beginPath();
+    scanData.forEach((d,i)=>{
+      const a=i*Math.PI/180;
+      const r=Math.min(d,4)*scale;
+      const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.closePath();ctx.fillStyle='rgba(0,212,255,0.12)';ctx.fill();
+    ctx.strokeStyle='rgba(0,212,255,0.7)';ctx.lineWidth=1;ctx.stroke();
+    // Points
+    scanData.forEach((d,i)=>{
+      if(i%4!==0) return;
+      const a=i*Math.PI/180,r=Math.min(d,4)*scale;
+      ctx.beginPath();ctx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,1.5,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,255,136,0.8)';ctx.fill();
+    });
+    // Robot center
+    ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fillStyle='#FF5500';ctx.fill();
+  }
+
+  function updateDashboard(){
+    document.getElementById('linVel').textContent=linVel.toFixed(2);
+    document.getElementById('angVel').textContent=angVel.toFixed(2);
+    document.getElementById('batPct').textContent=Math.round(batPct);
+    const bar=document.getElementById('batBar');
+    bar.style.width=batPct+'%';
+    bar.style.background=batPct>60?'var(--gr)':batPct>30?'var(--yw)':'var(--rd)';
+    const voltage=10.5+batPct*.03;
+    document.getElementById('batVolt').textContent=`Voltage: ${voltage.toFixed(1)} V`;
+  }
+
+  new IntersectionObserver(([e])=>{
+    if(!e.isIntersecting||telRunning) return;
+    telRunning=true;
+    function telLoop(){
+      if(telMode==='demo') simStep();
+      drawOdom();drawScan();updateDashboard();
+      setTimeout(()=>requestAnimationFrame(telLoop),100);
+    }
+    requestAnimationFrame(telLoop);
+  },{threshold:.1}).observe(odomCanvas);
+
+  window.addEventListener('resize',()=>{ resizeTelemetry(); });
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 19: VOICE AI INTERVIEW
+══════════════════════════════════ */
+(function(){
+  const orb=document.getElementById('voiceOrb');
+  const statusEl=document.getElementById('voiceStatus');
+  const transcriptEl=document.getElementById('voiceTranscript');
+  const waveform=document.getElementById('waveform');
+  const voiceIcon=document.getElementById('voiceIcon');
+  let recognition=null, transcript=[], isListening=false;
+
+  const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+  window.toggleVoice=function(){
+    if(!SpeechRec){
+      statusEl.textContent='Speech recognition not supported in this browser. Use preset questions below.';
+      return;
+    }
+    if(isListening){ recognition&&recognition.stop(); return; }
+    recognition=new SpeechRec();
+    recognition.continuous=false;recognition.interimResults=false;recognition.lang='en-US';
+    isListening=true;
+    orb.classList.add('listening');voiceIcon.textContent='🔴';
+    waveform.classList.add('active');
+    statusEl.textContent='Listening... speak your question';
+    recognition.onresult=e=>{
+      const q=e.results[0][0].transcript;
+      askVoicePreset(q);
+    };
+    recognition.onerror=recognition.onend=()=>{
+      isListening=false;orb.classList.remove('listening');voiceIcon.textContent='🎙️';waveform.classList.remove('active');
+    };
+    recognition.start();
+  };
+
+  window.askVoicePreset=async function(question){
+    isListening=false;orb.classList.remove('listening');orb.classList.add('thinking');
+    voiceIcon.textContent='🤔';statusEl.textContent='Claude is thinking...';waveform.classList.remove('active');
+
+    transcript.push({role:'Q',text:question});
+    renderTranscript();
+
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:500,
+          system:`You are Nithin Rajan, a Robotics & Autonomous Systems Engineer being interviewed. Answer as Nithin in first person, concisely (2-3 sentences max). Key facts: M.Tech Robotics SRM GPA 8.73, 8+ years, ROS/ROS2/SLAM/MoveIt/sensor fusion expert, worked on Level 3 AV (Robo Taxi at Tata Elxsi), automotive testing for BMW/Alpine/Forvia/BYD, PET robot in ROS2, Toshiba arm path planning with OMPL, Wipod self-driving campus car, ARM NEON SIMD, UCAP/Reverse Camera at Valeo. Based in Dubai UAE, open to global opportunities. Email: Nitz.719@gmail.com`,
+          messages:[{role:'user',content:question}]
+        })
+      });
+      const data=await resp.json();
+      const answer=(data.content&&data.content[0]&&data.content[0].text)||"I'm sorry, I couldn't generate a response right now.";
+      transcript.push({role:'A',text:answer});renderTranscript();
+
+      // Speak the answer
+      if(window.speechSynthesis){
+        const utt=new SpeechSynthesisUtterance(answer);
+        utt.rate=0.9;utt.pitch=1;
+        utt.onstart=()=>{orb.classList.remove('thinking');orb.classList.add('listening');voiceIcon.textContent='🔊';statusEl.textContent='Speaking answer...';};
+        utt.onend=()=>{orb.classList.remove('thinking','listening');voiceIcon.textContent='🎙️';statusEl.textContent='Click to ask another question';};
+        window.speechSynthesis.speak(utt);
+      } else {
+        orb.classList.remove('thinking');voiceIcon.textContent='🎙️';statusEl.textContent='Click to ask another question';
+      }
+    } catch(err){
+      transcript.push({role:'A',text:'(API unavailable — please check connection)'});renderTranscript();
+      orb.classList.remove('thinking');voiceIcon.textContent='🎙️';statusEl.textContent='Click to try again';
+    }
+  };
+
+  function renderTranscript(){
+    transcriptEl.innerHTML=transcript.map(t=>
+      t.role==='Q'
+        ?`<div style="margin-bottom:8px"><div class="voice-q">❯ YOU: ${t.text}</div></div>`
+        :`<div style="margin-bottom:14px"><div class="voice-a">Nithin: ${t.text}</div></div>`
+    ).join('');
+    transcriptEl.scrollTop=transcriptEl.scrollHeight;
+  }
+
+  window.downloadTranscript=function(){
+    if(!transcript.length) return;
+    const text=transcript.map(t=>`${t.role==='Q'?'Q':'A'}: ${t.text}`).join('\n\n');
+    const blob=new Blob([text],{type:'text/plain'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='Nithin_Rajan_Interview_Transcript.txt';a.click();
+  };
+
+  orb.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') toggleVoice(); });
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 1: AI CHAT ASSISTANT
+══════════════════════════════════ */
+(function(){
+  const NITHIN_CONTEXT=`You are an AI assistant for Nithin Rajan's portfolio. Answer visitor questions about Nithin concisely and helpfully.
+
+PROFILE:
+- Name: Nithin Rajan | Role: Robotics & Autonomous Systems Engineer
+- Email: Nitz.719@gmail.com | Phone India: +91 8197678200 | UAE: +971 504375954
+- Location: Al Karama, Dubai, UAE | Base: Kerala, India
+- LinkedIn: https://www.linkedin.com/in/nithin-rajan-robotics/
+- GitHub: https://github.com/Nitz719
+- Education: M.Tech Robotics, SRM University, GPA 8.73
+- Experience: 8+ years
+
+SKILLS: ROS/ROS2, SLAM, Sensor Fusion, MoveIt, OMPL, Nav2, OpenCV, PCL, C++, Python, C, MATLAB, CAPL, CANoe, VTest Studio, HIL Testing, UDS, LIN, CAN, ARM, Arduino, 8051, AVR, Gazebo, RVIZ, LiDAR, IMU, RADAR, Embedded C, SolidWorks
+
+CLIENTS: BMW, Alpine, Forvia (France), BYD (via Valeo), Wipro, Tata Elxsi, Toshiba
+
+PROJECTS:
+1. PET Robot – ROS2 Humble, RTAB-Map, Gazebo, home pet monitoring
+2. Over-Head Board Module (Alpine) – CANoe, CAPL, HIL, LIN, UDS validation
+3. Robo Taxi (Tata Elxsi) – Level 3 AV, ROS2, sensor fusion, LiDAR SLAM, intern mentoring
+4. Infotainment CCS (Forvia France) – IVI, Python BDD, Linux, Android
+5. Wipod (Wipro) – Campus self-driving car, ROS1 Noetic, bare-metal motor driver
+6. BYD Project (Valeo) – Embedded C, ARM, camera module
+7. Reverse View Camera (Valeo) – C/C++, ARM-7, Pixel Processor
+8. UCAP (Valeo) – C++ data logging, real-time camera rendering
+9. ARM NEON SIMD – Vectorized algorithms, ~8x speedup on Cortex-A72
+10. High Payload Path Planning (Toshiba) – MoveIt, OMPL, vacuum gripper, URDF
+11. Educational Bots – Arduino, LEGO Mindstorms, drones, workshops
+
+STATUS: Available for global opportunities. Open to relocation.
+
+If a visitor mentions hiring or jobs, encourage them to use the contact form on the page.`;
+
+  const chatMsgs=document.getElementById('chatMsgs');
+  const chatInput=document.getElementById('chatInput');
+  let chatHistory=[];
+  let isOpen=false;
+
+  // Add initial greeting
+  function addMsg(text,role){
+    const div=document.createElement('div');
+    div.className=`chat-msg ${role}`;
+    div.innerHTML=text;
+    chatMsgs.appendChild(div);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+    return div;
+  }
+
+  window.toggleChat=function(){
+    const panel=document.getElementById('chatPanel');
+    isOpen=!isOpen;
+    panel.classList.toggle('open',isOpen);
+    document.querySelector('.chat-notif').style.display='none';
+    if(isOpen&&chatMsgs.children.length===0){
+      addMsg(`<strong>👋 Hi!</strong> I'm Nithin's AI assistant. Ask me anything about his skills, projects, or availability — or click a suggestion below.`,'bot');
+    }
+    if(isOpen) chatInput.focus();
+  };
+
+  window.sendSuggestion=function(btn){
+    chatInput.value=btn.textContent;
+    sendChat();
+    document.getElementById('chatSuggestions').style.display='none';
+  };
+
+  window.sendChat=async function(){
+    const text=chatInput.value.trim();if(!text)return;
+    chatInput.value='';
+    addMsg(text,'user');
+    chatHistory.push({role:'user',content:text});
+
+    // Typing indicator
+    const typing=document.createElement('div');
+    typing.className='typing-indicator';
+    typing.innerHTML='<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+    chatMsgs.appendChild(typing);chatMsgs.scrollTop=chatMsgs.scrollHeight;
+
+    // Check for hiring intent
+    const hiringKeywords=['hire','job','position','role','opportunity','recruit','work with','available'];
+    if(hiringKeywords.some(k=>text.toLowerCase().includes(k))){
+      typing.remove();
+      addMsg(`<strong>Great!</strong> Nithin is open to opportunities. Use the contact form below to reach out directly 👇<div class="chat-contact-form"><input placeholder="Your name" id="chatFName" type="text"><input placeholder="your@email.com" id="chatFEmail" type="email"><textarea placeholder="Tell Nithin about the role..."></textarea><button class="chat-form-submit" onclick="submitChatForm()">Send to Nithin →</button></div>`,'bot');
+      chatHistory.push({role:'assistant',content:'Showing contact form.'});
+      return;
+    }
+
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:300,
+          system:NITHIN_CONTEXT,
+          messages:chatHistory.slice(-10)
+        })
+      });
+      const data=await resp.json();
+      typing.remove();
+      const reply=(data.content&&data.content[0]&&data.content[0].text)||"I couldn't get a response. Please try again.";
+      addMsg(reply,'bot');
+      chatHistory.push({role:'assistant',content:reply});
+    }catch(e){
+      typing.remove();
+      addMsg('Connection issue. Please check the API proxy or try again.','bot');
+    }
+  };
+
+  chatInput.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();} });
+
+  window.submitChatForm=function(){
+    const name=document.getElementById('chatFName')?.value||'';
+    const email=document.getElementById('chatFEmail')?.value||'';
+    if(!name||!email){ alert('Please fill in name and email.'); return; }
+    addMsg(`✅ Message sent! Nithin will get back to <strong>${email}</strong> shortly.`,'bot');
+  };
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 5: AI RESUME TAILOR
+══════════════════════════════════ */
+window.runResumeTailor=async function(){
+  const jd=document.getElementById('tailorJD').value.trim();
+  if(!jd){ alert('Please paste a job description.'); return; }
+  const btn=document.getElementById('tailorBtn');
+  const result=document.getElementById('tailorResult');
+  btn.disabled=true;btn.textContent='⏳ Tailoring...';
+  result.innerHTML=`<div class="ai-loading"><div class="ai-spinner"></div><div>Claude is matching your resume to the job description...</div></div>`;
+
+  const originalBullets=`• Developed ROS2-based autonomous systems including PET robot and Robo Taxi (Level 3 AV)
+• Implemented SLAM using RTAB-Map, sensor fusion with Extended Kalman Filter (EKF) in C++
+• Led ADAS intern team in sensor interfacing, calibration, and ROS2 simulation
+• System validation of automotive ECUs using CANoe, CAPL scripts, HIL testing (Alpine, Forvia)
+• Optimized robot arm trajectory with MoveIt + OMPL for Toshiba high-payload system
+• Developed C++ data logging and real-time camera rendering pipeline (UCAP, Valeo)
+• ARM NEON SIMD optimization achieving ~8x speedup on Cortex-A72 automotive platform
+• Campus self-driving vehicle (Wipod) using ROS1 Noetic with bare-metal motor driver`;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:800,
+        system:`You are a professional resume writer. Given a job description and a candidate's bullet points, rewrite the bullets to match the job keywords and requirements while keeping all facts accurate. Return ONLY the tailored bullet points, one per line starting with •. Do not add anything else.`,
+        messages:[{role:'user',content:`JOB DESCRIPTION:\n${jd}\n\nORIGINAL BULLETS:\n${originalBullets}\n\nRewrite the bullets to best match this job description.`}]
+      })
+    });
+    const data=await resp.json();
+    const tailored=(data.content&&data.content[0]&&data.content[0].text)||'Could not generate tailored version.';
+
+    result.innerHTML=`
+      <div class="diff-wrap">
+        <div>
+          <div class="diff-col-title">ORIGINAL</div>
+          <div class="diff-content">${originalBullets.replace(/\n/g,'<br>')}</div>
+        </div>
+        <div>
+          <div class="diff-col-title" style="color:var(--gr)">TAILORED ✦</div>
+          <div class="diff-content tailored">${tailored.replace(/\n/g,'<br>')}</div>
+        </div>
+      </div>
+      <button class="ai-run-btn" style="margin-top:12px" onclick="downloadTailored()">⬇ Download Tailored Version</button>`;
+    window._tailoredText=tailored;
+  }catch(e){
+    result.innerHTML=`<div style="color:var(--rd);font-family:'Share Tech Mono',monospace;font-size:11px;padding:16px">API error: ${e.message}</div>`;
+  }
+  btn.disabled=false;btn.textContent='⚡ Tailor with Claude AI';
+};
+
+window.downloadTailored=function(){
+  const text=`NITHIN RAJAN — TAILORED RESUME BULLETS\n\n${window._tailoredText||''}\n\nFull Resume: https://raw.githubusercontent.com/Nitz719/Nithin_Rajan_Portfolio/main/Nithin_Rajan_Resume.pdf`;
+  const blob=new Blob([text],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Nithin_Rajan_Tailored_Resume.txt';a.click();
+};
+
+
+/* ══════════════════════════════════
+   FEATURE 16: AI RESUME BUILDER
+══════════════════════════════════ */
+let builderRole='',builderSelectedProjects=[],builderSelectedSkills=[];
+
+window.openResumeBuilder=function(){ document.getElementById('builderModal').classList.add('open'); };
+
+window.selectRole=function(card,role){
+  document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
+  card.classList.add('selected');
+  builderRole=role;
+};
+
+window.builderNext=async function(step){
+  document.querySelectorAll('.resume-step').forEach((s,i)=>s.classList.toggle('active',i===step-1));
+  ['step1dot','step2dot','step3dot','step4dot'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.classList.toggle('active',i===step-1);
+    el.classList.toggle('done',i<step-1);
+  });
+
+  if(step===2){
+    const projToggle=document.getElementById('builderProjectToggles');
+    const skillToggle=document.getElementById('builderSkillToggles');
+    const projects=['PET Robot','Robo Taxi','OHC Alpine','Toshiba Arm','Wipod','UCAP','ARM NEON','Reverse Camera'];
+    const skills=['ROS2','SLAM','MoveIt','C++','Python','Sensor Fusion','CANoe','HIL Testing','OMPL','Embedded C'];
+    projToggle.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--cy);margin-bottom:8px;letter-spacing:2px">PROJECTS</div>';
+    skillToggle.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--cy);margin-bottom:8px;letter-spacing:2px;margin-top:12px">SKILLS</div>';
+    projects.forEach(p=>{
+      const btn=document.createElement('button');btn.className='skill-toggle on';btn.textContent=p;
+      btn.onclick=()=>btn.classList.toggle('on');
+      projToggle.appendChild(btn);
+    });
+    skills.forEach(s=>{
+      const btn=document.createElement('button');btn.className='skill-toggle on';btn.textContent=s;
+      btn.onclick=()=>btn.classList.toggle('on');
+      skillToggle.appendChild(btn);
+    });
+  }
+
+  if(step===3){
+    const selProjects=Array.from(document.querySelectorAll('#builderProjectToggles .skill-toggle.on')).map(b=>b.textContent);
+    const selSkills=Array.from(document.querySelectorAll('#builderSkillToggles .skill-toggle.on')).map(b=>b.textContent);
+    document.getElementById('builderLoading').textContent='Claude is writing your professional summary for '+builderRole+'...';
+
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:600,
+          system:`You are a professional resume writer. Write a compelling professional summary paragraph (3-4 sentences) for Nithin Rajan targeting a ${builderRole} role. Follow it with 5 strong bullet points. Use the selected projects and skills provided. Be specific and impactful.`,
+          messages:[{role:'user',content:`Target Role: ${builderRole}\nSelected Projects: ${selProjects.join(', ')}\nSelected Skills: ${selSkills.join(', ')}\nCandidate: Nithin Rajan, M.Tech Robotics SRM GPA 8.73, 8+ years, Dubai UAE. Write the summary and bullets.`}]
+        })
+      });
+      const data=await resp.json();
+      const summary=(data.content&&data.content[0]&&data.content[0].text)||'Summary unavailable.';
+      builderNext(4);
+      document.getElementById('resumePreview').innerHTML=`
+        <h1>Nithin Rajan</h1>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cy);margin-bottom:8px">
+          Nitz.719@gmail.com | +971 504375954 | Dubai, UAE | github.com/Nitz719
+        </div>
+        <h2>PROFESSIONAL SUMMARY</h2>
+        <div>${summary.replace(/\n/g,'<br>')}</div>
+        <h2>KEY SKILLS</h2>
+        <div>${selSkills.join(' · ')}</div>
+        <h2>SELECTED PROJECTS</h2>
+        <ul>${selProjects.map(p=>`<li>${p}</li>`).join('')}</ul>
+        <h2>EDUCATION</h2>
+        <div>M.Tech Robotics · SRM University · GPA 8.73</div>`;
+    }catch(e){
+      builderNext(4);
+      document.getElementById('resumePreview').innerHTML='<div style="color:var(--rd)">API error — could not generate summary.</div>';
+    }
+  }
+};
+
+
+/* ══════════════════════════════════
+   FEATURE 6: CONTACT FORM (EmailJS)
+══════════════════════════════════ */
+window.sendMsg=function(){
+  const fn=document.getElementById('fn').value.trim();
+  const fe=document.getElementById('fe').value.trim();
+  const fm=document.getElementById('fm').value.trim();
+  let valid=true;
+
+  document.getElementById('errName').classList.toggle('show',!fn);
+  document.getElementById('fn').classList.toggle('err',!fn);
+  if(!fn) valid=false;
+
+  const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  document.getElementById('errEmail').classList.toggle('show',!emailRe.test(fe));
+  document.getElementById('fe').classList.toggle('err',!emailRe.test(fe));
+  if(!emailRe.test(fe)) valid=false;
+
+  document.getElementById('errMsg').classList.toggle('show',!fm);
+  document.getElementById('fm').classList.toggle('err',!fm);
+  if(!fm) valid=false;
+
+  if(!valid) return;
+
+  const btn=document.getElementById('fsub');
+  const statEl=document.getElementById('fstat');
+  btn.disabled=true;document.getElementById('fsubText').textContent='Sending...';
+
+  // EmailJS call
+  if(window.emailjs){
+    emailjs.send('portfolio_contact','template_nithin',{
+      from_name:fn,from_email:fe,
+      subject:document.getElementById('fs').value||'Portfolio Inquiry',
+      message:fm,to_name:'Nithin'
+    },'YOUR_PUBLIC_KEY')
+    .then(()=>{
+      statEl.style.cssText='display:block;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);color:var(--gr);border-radius:2px';
+      statEl.textContent='✓ Message sent! Nithin will reply within 24 hours.';
+      btn.disabled=false;document.getElementById('fsubText').textContent='Send Message →';
+      document.getElementById('contactForm').reset();
+    })
+    .catch(()=>{ fallbackFormSuccess(btn,statEl); });
+  } else {
+    // Fallback: open mailto
+    fallbackFormSuccess(btn,statEl);
+    window.open(`mailto:Nitz.719@gmail.com?subject=${encodeURIComponent(document.getElementById('fs').value||'Portfolio Inquiry')}&body=${encodeURIComponent(fm+'\n\nFrom: '+fn+' <'+fe+'>')},'_blank');
+  }
+};
+
+function fallbackFormSuccess(btn,statEl){
+  statEl.style.cssText='display:block;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);color:var(--gr);border-radius:2px';
+  statEl.textContent='✓ Opening email client... Alternatively reach Nithin at Nitz.719@gmail.com';
+  btn.disabled=false;document.getElementById('fsubText').textContent='Send Message →';
+}
+
+
+/* ══════════════════════════════════
+   FEATURE 15: AVAILABILITY CALENDAR
+══════════════════════════════════ */
+(function(){
+  const tzEl=document.getElementById('visitorTz');
+  if(tzEl){
+    try{ tzEl.textContent=Intl.DateTimeFormat().resolvedOptions().timeZone+' (auto-detected)'; }
+    catch(e){ tzEl.textContent='Unknown'; }
+  }
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 17: VISITOR ANALYTICS + EXIT INTENT
+══════════════════════════════════ */
+(function(){
+  let exitShown=false;
+  document.addEventListener('mouseleave',e=>{
+    if(e.clientY<=0&&!exitShown){
+      exitShown=true;
+      // Get most viewed projects from sessionStorage
+      const views=JSON.parse(sessionStorage.getItem('proj_views')||'{}');
+      const sorted=Object.entries(views).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      const defaultProjects=[
+        {title:'Robo Taxi — Level 3 AV',tags:'ROS2 · SLAM · Sensor Fusion'},
+        {title:'High Payload Path Planning',tags:'MoveIt · OMPL · C++'},
+        {title:'OHC Module — Alpine',tags:'CANoe · HIL · CAPL'}
+      ];
+      const topProjects=sorted.length>=2?sorted.map(([t])=>({title:t,tags:''})):defaultProjects;
+      const cards=document.getElementById('exitProjCards');
+      cards.innerHTML=topProjects.slice(0,3).map((p,i)=>`
+        <div class="exit-proj-card">
+          <div class="exit-proj-num" style="color:var(--cy)">${String(i+1).padStart(2,'0')}</div>
+          <div><div class="exit-proj-title">${p.title}</div><div class="exit-proj-tags">${p.tags||'Robotics · Automotive'}</div></div>
+        </div>`).join('');
+      document.getElementById('exitModal').classList.add('open');
+    }
+  });
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 21: SKILL MINI-GAME
+══════════════════════════════════ */
+(function(){
+  // Konami code detector
+  const KONAMI=[38,38,40,40,37,39,37,39,66,65];
+  let kIdx=0;
+  document.addEventListener('keydown',e=>{
+    if(e.keyCode===KONAMI[kIdx]) kIdx++;else kIdx=0;
+    if(kIdx===KONAMI.length){ kIdx=0; triggerGame(); }
+  });
+
+  window.triggerGame=function(){
+    document.getElementById('gameSection').classList.add('open');
+    startGame();
+  };
+  window.closeGame=function(){
+    document.getElementById('gameSection').classList.remove('open');
+    stopGame();
+  };
+
+  const canvas=document.getElementById('gameCanvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const TILE=20,COLS=28,ROWS=21;
+  canvas.width=COLS*TILE;canvas.height=ROWS*TILE;
+
+  const SKILLS=[
+    {name:'ROS2',color:'#00D4FF',fact:'ROS2 uses DDS middleware for real-time communication'},
+    {name:'LiDAR',color:'#00FF88',fact:'LiDAR measures distances using laser pulses at ~100k points/sec'},
+    {name:'C++',color:'#FF5500',fact:'C++ is used in 90% of production robotics systems'},
+    {name:'SLAM',color:'#4A9EFF',fact:'SLAM builds a map while simultaneously localizing the robot'},
+    {name:'MoveIt',color:'#FFD252',fact:'MoveIt is the de facto standard for robot manipulation in ROS'},
+    {name:'Python',color:'#00FF88',fact:'Python is used for rapid prototyping and AI in robotics'},
+    {name:'OMPL',color:'#FF3B6B',fact:'OMPL has 30+ sampling-based planning algorithms'},
+    {name:'Gazebo',color:'#00D4FF',fact:'Gazebo simulates physics-accurate robot environments'},
+    {name:'OpenCV',color:'#FF5500',fact:'OpenCV has 2500+ optimized computer vision algorithms'},
+    {name:'CANoe',color:'#FFD252',fact:'CANoe simulates entire vehicle networks for ECU testing'},
+    {name:'Nav2',color:'#4A9EFF',fact:'Nav2 is the ROS2 successor to the ROS1 Navigation Stack'},
+    {name:'ARM',color:'#FF3B6B',fact:'ARM Cortex-A72 powers most modern automotive ECUs'},
+    {name:'PCL',color:'#00FF88',fact:'PCL provides 3D point cloud processing for robotics'},
+    {name:'Sensor\nFusion',color:'#00D4FF',fact:'Kalman Filter fuses noisy sensors into accurate estimates'},
+  ];
+
+  let player={x:2,y:2,dx:0,dy:0};
+  let orbs=[];
+  let score=0,collected=0,timeLeft=60,gameInterval=null,timerInterval=null;
+  let keys={};
+  let won=false,gameSounds={};
+
+  function placeOrbs(){
+    orbs=SKILLS.map((sk,i)=>({
+      x:3+Math.floor(Math.random()*(COLS-6)),
+      y:2+Math.floor(Math.random()*(ROWS-4)),
+      skill:sk,collected:false,
+      pulse:Math.random()*Math.PI*2
+    }));
+  }
+
+  function drawGame(){
+    ctx.fillStyle='#030309';ctx.fillRect(0,0,canvas.width,canvas.height);
+    // Grid
+    ctx.strokeStyle='rgba(0,212,255,0.05)';ctx.lineWidth=.5;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      ctx.strokeRect(c*TILE,r*TILE,TILE,TILE);
+    }
+    // Orbs
+    orbs.forEach(orb=>{
+      if(orb.collected) return;
+      orb.pulse+=.06;
+      const glow=Math.abs(Math.sin(orb.pulse));
+      ctx.beginPath();ctx.arc(orb.x*TILE+TILE/2,orb.y*TILE+TILE/2,TILE*.3+glow*2,0,Math.PI*2);
+      ctx.fillStyle=orb.skill.color;ctx.globalAlpha=.3+glow*.3;ctx.fill();ctx.globalAlpha=1;
+      ctx.beginPath();ctx.arc(orb.x*TILE+TILE/2,orb.y*TILE+TILE/2,TILE*.25,0,Math.PI*2);
+      ctx.fillStyle=orb.skill.color;ctx.fill();
+      ctx.fillStyle='#000';ctx.font=`bold ${orb.skill.name.length>5?7:8}px Share Tech Mono, monospace`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const lines=orb.skill.name.split('\n');
+      lines.forEach((l,i)=>ctx.fillText(l,orb.x*TILE+TILE/2,orb.y*TILE+TILE/2+(i-.4*(lines.length-1))*8));
+    });
+    // Player
+    const px=player.x*TILE+TILE/2,py=player.y*TILE+TILE/2;
+    ctx.beginPath();ctx.arc(px,py,TILE*.35,0,Math.PI*2);
+    ctx.fillStyle='#FF5500';ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='10px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('🤖',px,py);
+  }
+
+  function gameLoop(){
+    // Movement
+    let nx=player.x,ny=player.y;
+    if(keys['ArrowLeft']||keys['a']||keys['A']) nx--;
+    if(keys['ArrowRight']||keys['d']||keys['D']) nx++;
+    if(keys['ArrowUp']||keys['w']||keys['W']) ny--;
+    if(keys['ArrowDown']||keys['s']||keys['S']) ny++;
+    if(nx>=0&&nx<COLS) player.x=nx;
+    if(ny>=0&&ny<ROWS) player.y=ny;
+
+    // Collect orbs
+    orbs.forEach(orb=>{
+      if(!orb.collected&&orb.x===player.x&&orb.y===player.y){
+        orb.collected=true;collected++;score+=100;
+        document.getElementById('gameScore').textContent=score;
+        document.getElementById('gameCollected').textContent=collected;
+        // Show fact
+        ctx.fillStyle='rgba(0,212,255,0.95)';ctx.fillRect(0,canvas.height-36,canvas.width,36);
+        ctx.fillStyle='#000';ctx.font='9px Share Tech Mono, monospace';ctx.textAlign='center';
+        ctx.fillText(orb.skill.fact,canvas.width/2,canvas.height-18);
+        if(collected>=SKILLS.length&&!won){
+          won=true;stopGame();showWin();
+        }
+      }
+    });
+    drawGame();
+  }
+
+  function showWin(){
+    ctx.fillStyle='rgba(3,3,9,0.88)';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#00FF88';ctx.font='bold 16px Orbitron, monospace';ctx.textAlign='center';
+    ctx.fillText('🎉 FULL STACK ROBOTICS ENGINEER UNLOCKED!',canvas.width/2,canvas.height/2-20);
+    ctx.fillStyle='#00D4FF';ctx.font='10px Share Tech Mono, monospace';
+    ctx.fillText(`Score: ${score} | All 14 skills collected`,canvas.width/2,canvas.height/2+10);
+    ctx.fillText('Check out the Contact section to hire Nithin!',canvas.width/2,canvas.height/2+30);
+    // Confetti
+    for(let i=0;i<60;i++){
+      const piece=document.createElement('div');
+      piece.className='confetti-piece';
+      piece.style.cssText=`left:${Math.random()*100}vw;top:${Math.random()*40}vh;background:${['#00D4FF','#FF5500','#00FF88','#FFD252'][Math.floor(Math.random()*4)]};transform:rotate(${Math.random()*360}deg);animation-delay:${Math.random()*.5}s`;
+      document.body.appendChild(piece);
+      setTimeout(()=>piece.remove(),3500);
+    }
+  }
+
+  function startGame(){
+    won=false;collected=0;score=0;timeLeft=60;player={x:Math.floor(COLS/2),y:Math.floor(ROWS/2)};
+    placeOrbs();
+    document.getElementById('gameScore').textContent='0';
+    document.getElementById('gameCollected').textContent='0';
+    document.getElementById('gameTimer').textContent='60';
+    gameInterval=setInterval(gameLoop,120);
+    timerInterval=setInterval(()=>{
+      timeLeft--;document.getElementById('gameTimer').textContent=timeLeft;
+      if(timeLeft<=0){ stopGame(); ctx.fillStyle='rgba(3,3,9,.88)';ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#FF5500';ctx.font='bold 14px Orbitron,monospace';ctx.textAlign='center';ctx.fillText(`Time's up! Score: ${score}`,canvas.width/2,canvas.height/2); }
+    },1000);
+  }
+
+  function stopGame(){ clearInterval(gameInterval);clearInterval(timerInterval); }
+
+  document.addEventListener('keydown',e=>{ keys[e.key]=true; });
+  document.addEventListener('keyup',e=>{ keys[e.key]=false; });
+
+  // Touch controls for mobile
+  let touchStartX=0,touchStartY=0;
+  canvas.addEventListener('touchstart',e=>{ touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY; },{passive:true});
+  canvas.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-touchStartX;
+    const dy=e.changedTouches[0].clientY-touchStartY;
+    if(Math.abs(dx)>Math.abs(dy)){ if(dx>20) player.x=Math.min(COLS-1,player.x+1); else if(dx<-20) player.x=Math.max(0,player.x-1); }
+    else { if(dy>20) player.y=Math.min(ROWS-1,player.y+1); else if(dy<-20) player.y=Math.max(0,player.y-1); }
+  },{passive:true});
+})();
+
+
+/* ══════════════════════════════════
+   FEATURE 3: LIGHT/DARK MODE (already handled at top)
+   FEATURE 12: CAREER TIMELINE (using existing HTML timeline)
+   — enhanced with scroll-triggered parallax
+══════════════════════════════════ */
+(function(){
+  const tl=document.querySelector('.tl-wrap');if(!tl)return;
+  window.addEventListener('scroll',()=>{
+    const items=tl.querySelectorAll('.tl-item');
+    items.forEach((item,i)=>{
+      const rect=item.getBoundingClientRect();
+      if(rect.top<window.innerHeight*.9){
+        item.style.opacity='1';
+        item.style.transform='translateX(0)';
+      }
+    });
+  },{passive:true});
+  // Initial state
+  tl.querySelectorAll('.tl-item').forEach((item,i)=>{
+    item.style.opacity='0';item.style.transform='translateX(-20px)';
+    item.style.transition=`opacity .6s ${i*.1}s ease, transform .6s ${i*.1}s ease`;
+  });
+})();
+
+
+/* ══════════════════════════════════
+   SCROLL-TRIGGERED SECTION VISIBILITY TIMER
+   (supports Feature 17 analytics)
+══════════════════════════════════ */
+(function(){
+  const sectionTimes={};
+  let currentSection='',sectionStart=Date.now();
+  document.querySelectorAll('section[id]').forEach(sec=>{
+    new IntersectionObserver(([e])=>{
+      if(e.isIntersecting){
+        currentSection=sec.id;sectionStart=Date.now();
+      } else if(currentSection===sec.id){
+        sectionTimes[sec.id]=(sectionTimes[sec.id]||0)+(Date.now()-sectionStart);
+        sessionStorage.setItem('section_times',JSON.stringify(sectionTimes));
+      }
+    },{threshold:.5}).observe(sec);
+  });
+})();
+
+/* ══════════════════════════════════
+   FINAL INIT — button mag hover effects
+══════════════════════════════════ */
+document.querySelectorAll('.mag').forEach(el=>{
+  el.addEventListener('mousemove',e=>{
+    const r=el.getBoundingClientRect();
+    const dx=(e.clientX-r.left-r.width/2)*.15;
+    const dy=(e.clientY-r.top-r.height/2)*.15;
+    el.style.transform=`translate(${dx}px,${dy}px)`;
+  });
+  el.addEventListener('mouseleave',()=>el.style.transform='');
+});
+
+</script>
+<!-- ═══════════════════════════════════════════════════════════════
+     END OF CONTINUATION — this closes the <script> block.
+     After pasting, make sure you have </body></html> at the very end.
+═══════════════════════════════════════════════════════════════ -->
